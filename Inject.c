@@ -41,7 +41,7 @@ void change_permissions(mach_port_t task, uint64_t address, size_t size) {
 void bypass_anti_debugging() {
     void* handle = dlopen("/usr/lib/system/libsystem_kernel.dylib", RTLD_NOW);
     if (handle) {
-        typedef int (*ptrace_t)(int request, pid_t pid, caddr_t addr, int data);
+        typedef int (*ptrace_t)(int request, pid_t pid, void *addr, int data);  // Use void * instead of caddr_t
         ptrace_t ptrace = (ptrace_t)dlsym(handle, "ptrace");
         if (ptrace) {
             ptrace(31, 0, 0, 0);  // PTRACE_DENY_ATTACH
