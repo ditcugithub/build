@@ -1,0 +1,27 @@
+name: Build Dylib
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@v3
+
+    - name: Build Dylib
+      run: |
+        clang -shared -o inject.dylib inject.c
+        mkdir -p artifacts
+        mv inject.dylib artifacts/
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: inject-dylib
+        path: artifacts/
