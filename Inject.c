@@ -1,4 +1,6 @@
 #include <mach/mach.h>
+#include <mach/mach_vm.h> // Required for mach_vm_write
+#include <unistd.h>       // Required for getpid
 #include <stdio.h>
 
 // Define target addresses and their new values
@@ -9,11 +11,11 @@ typedef struct {
 
 // List of patches
 MemoryPatch patches[] = {
-    {0x53AC770, 0x360080D2},
     {0x61E0EFC, 0x00902F1E},
     {0x5EC5014, 0x370080D2},
     {0x5EDDD04, 0xC0035FD6},
     {0x5DB8528, 0xC0035FD6},
+    {0x53AC770, 0x360080D2}, // Added new patch
 };
 
 #define PATCH_COUNT (sizeof(patches) / sizeof(MemoryPatch))
