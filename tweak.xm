@@ -4,6 +4,13 @@
 
 %hook UIApplication
 
+// Declare the instance methods you're calling within the hook.
+- (void)showKeyInputPrompt;
+- (void)updateStatus:(UIAlertController *)alertController withKey:(NSString *)key;
+- (void)startCountdownTimerForAlert:(UIAlertController *)alertController;
+- (void)shutDownGame;
+- (void)validateKeyWithPHPBackend:(NSString *)key hwid:(NSString *)hwid completion:(void(^)(NSString *status))completion;
+
 - (void)applicationDidFinishLaunching:(UIApplication *)application {
     // Call the original method
     %orig(application);
@@ -14,7 +21,8 @@
 
 - (void)showKeyInputPrompt {
     // Disable user interaction to freeze the game
-    UIView *rootView = [UIApplication sharedApplication].windows.firstObject.rootViewController.view;
+    UIWindow *mainWindow = [UIApplication sharedApplication].connectedScenes.allObjects.firstObject.delegate.window;
+    UIView *rootView = mainWindow.rootViewController.view;
     rootView.userInteractionEnabled = NO;
 
     // Create an alert controller with a message
@@ -42,7 +50,7 @@
     [alertController addAction:submitAction];
 
     // Show the alert on the root view controller
-    UIViewController *rootVC = [UIApplication sharedApplication].windows.firstObject.rootViewController;
+    UIViewController *rootVC = mainWindow.rootViewController;
     [rootVC presentViewController:alertController animated:YES completion:nil];
 
     // Start a timer for the 90s countdown
