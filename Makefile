@@ -1,19 +1,28 @@
-ARCHS = arm64 # Specify all supported architectures
-TARGET = iphone:latest  # Set target device version
-# THEOS_DEVICE_IP = 192.168.1.10  # Optional, for remote building to a device
-LIBRARY_NAME = ChillySillyKeySystem  # The name of your dylib
+ARCHS = arm64  # Target architecture (for iPhone)
+TARGET = iphone:latest  # Target iOS version (adjust as needed)
 
-# Frameworks you want to link
+# Define the name of the library
+LIBRARY_NAME = ChillySillyKeySystem
+
+# Frameworks to link (UIKit, Foundation are common for iOS apps)
 LIBRARY_FRAMEWORKS = UIKit Foundation
 
-# Include the common.mk file from Theos
+# Specify paths for libcurl (make sure these paths are correct for your system)
+CURL_INCLUDE = /usr/include/curl  # Location of curl headers
+CURL_LIB = /usr/lib  # Location of curl libraries
+
+# Add libcurl to the LDFLAGS and CFLAGS to ensure it's linked correctly
+LDFLAGS += -L$(CURL_LIB)  # Link the curl library
+CFLAGS += -I$(CURL_INCLUDE)  # Include curl headers
+
+# Specify the source files for your dylib
+ChillySillyKeySystem_FILES = tweak.xm  # Replace with the actual name of your source file
+
+# Compiler flags for enabling ARC (Automatic Reference Counting)
+$(LIBRARY_NAME)_CFLAGS = -no_warn_inits
+
+# Include the common.mk from Theos, which includes the basic build environment
 include $(THEOS)/makefiles/common.mk
 
-# Specify the source files
-# $(LIBRARY_NAME)_FILES = tweak.xm  # Your source file (change to the correct name if needed)
-ChillySillyKeySystem_FILES = tweak.xm
-# Specify the compiler flags
-$(LIBRARY_NAME)_CFLAGS = -no_warn_inits  # Enable ARC (Automatic Reference Counting)
-# Add this line under the appropriate target
-# Include the final rule to build the dylib
+# Include the final rule for building the dylib
 include $(THEOS)/makefiles/library.mk
