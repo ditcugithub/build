@@ -29,10 +29,10 @@ jobs:
 
     - name: Automatically detect and build tweak
       run: |
-        # Find the directory that contains the Tweak.xm file
-        TWEAK_DIR=$(find . -type f -name "tweak.xm" -exec dirname {} \; | head -n 1)
+        # Find the directory that contains the tweak.xm file (case-insensitive search)
+        TWEAK_DIR=$(find . -type f -iname "tweak.xm" -exec dirname {} \; | head -n 1)
         if [ -z "$TWEAK_DIR" ]; then
-          echo "No Tweak.xm file found, exiting."
+          echo "No tweak.xm file found, exiting."
           exit 1
         fi
 
@@ -40,11 +40,18 @@ jobs:
         
         # Change to the detected tweak directory and run make
         cd $TWEAK_DIR
-        make clean
+
+        # Check if Makefile exists in the directory
+        if [ ! -f "Makefile" ]; then
+          echo "No Makefile found in $TWEAK_DIR, exiting."
+          exit 1
+        fi
+        
+        make clean || true  # Allow make clean to fail without stopping the process
         make
 
     - name: Upload dylib as artifact
       uses: actions/upload-artifact@v3
       with:
         name: built-dylib
-        path: ./your-tweak-directory/.theos/obj/iphone/debug/arm64/libChillySillyTweak.dylib  # Path to the generated dylib
+        path: $TWEAK_DIR/.theos/obj/iphone/debug/arm64/libTweak.dylib  # Adjust path if necessary
