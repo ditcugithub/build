@@ -1,4 +1,4 @@
-ARCHS = arm64 armv7 armv7s arm64e  # Specify all supported architectures
+ARCHS = arm64 # Specify all supported architectures
 TARGET = iphone:latest  # Set target device version
 # THEOS_DEVICE_IP = 192.168.1.10  # Optional, for remote building to a device
 LIBRARY_NAME = ChillySillyKeySystem  # The name of your dylib
@@ -10,8 +10,8 @@ LIBRARY_FRAMEWORKS = UIKit Foundation
 include $(THEOS)/makefiles/common.mk
 
 # Specify the source files
-$(LIBRARY_NAME)_FILES = tweak.xm  # Your source file (change to the correct name if needed)
-
+# $(LIBRARY_NAME)_FILES = tweak.xm  # Your source file (change to the correct name if needed)
+ChillySillyKeySystem_FILES = tweak.xm
 # Specify the compiler flags
 $(LIBRARY_NAME)_CFLAGS = -fobjc-arc  # Enable ARC (Automatic Reference Counting)
 
