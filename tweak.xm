@@ -14,7 +14,7 @@
 
 - (void)showKeyInputPrompt {
     // Disable user interaction to freeze the game
-    UIView *rootView = [UIApplication sharedApplication].keyWindow.rootViewController.view;
+    UIView *rootView = [UIApplication sharedApplication].windows.firstObject.rootViewController.view;
     rootView.userInteractionEnabled = NO;
 
     // Create an alert controller with a message
@@ -42,7 +42,7 @@
     [alertController addAction:submitAction];
 
     // Show the alert on the root view controller
-    UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
+    UIViewController *rootVC = [UIApplication sharedApplication].windows.firstObject.rootViewController;
     [rootVC presentViewController:alertController animated:YES completion:nil];
 
     // Start a timer for the 90s countdown
