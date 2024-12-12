@@ -1,41 +1,32 @@
-name: Build Dylib
+name: Build .dylib
 
 on:
   push:
     branches:
-      - main  # Trigger build on push to the main branch
+      - main
   pull_request:
     branches:
-      - main  # Trigger build for pull requests
+      - main
 
 jobs:
   build:
-    runs-on: macos-latest  # Use macOS runner
+    runs-on: macos-latest
 
     steps:
-      # Step 1: Checkout the code
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-      # Step 2: Install Xcode Command Line Tools
-      - name: Install Xcode Command Line Tools
-        run: |
-          xcode-select --install
-          sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+    - name: Install dependencies
+      run: |
+        brew install ldid
 
-      # Step 3: (Optional) Install additional dependencies (like ldid)
-      - name: Install Dependencies
-        run: |
-          brew install ldid
+    - name: Build the .dylib
+      run: |
+        make clean
+        make
 
-      # Step 4: Run make to build the dylib
-      - name: Build dylib
-        run: |
-          make
-
-      # Step 5: Upload the built dylib as an artifact
-      - name: Upload dylib artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: libinject.dylib
-          path: libinject.dylib
+    - name: Upload .dylib as artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: libinject.dylib
+        path: ./libinject.dylib
