@@ -23,7 +23,7 @@ jobs:
           export THEOS=/tmp/theos
           export PATH=$THEOS/bin:$PATH
           brew install ldid
-          
+
       - name: Find Makefile and .xm files
         id: find_files
         run: |
@@ -55,8 +55,20 @@ jobs:
           # Run the make command
           make
 
+      - name: Find and upload dylib artifact
+        id: find_and_upload
+        run: |
+          # Find the built .dylib file
+          DYLIB_FILE=$(find $(dirname $MAKEFILE_PATH) -name "*.dylib" | head -n 1)
+          if [ -z "$DYLIB_FILE" ]; then
+            echo "No .dylib file found. Exiting..."
+            exit 1
+          fi
+          echo "Dylib found at: $DYLIB_FILE"
+          echo "DYLIB_FILE=$DYLIB_FILE" >> $GITHUB_ENV
+
       - name: Upload dylib artifact
         uses: actions/upload-artifact@v3
         with:
           name: my-dylib
-          path: $(dirname $MAKEFILE_PATH)/dylib_output
+          path: ${{ env.DYLIB_FILE }}
