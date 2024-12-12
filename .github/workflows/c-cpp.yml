@@ -23,6 +23,7 @@ jobs:
           export THEOS=/tmp/theos
           export PATH=$THEOS/bin:$PATH
           brew install ldid
+          brew install curl
 
       - name: Find Makefile and .xm files
         id: find_files
