@@ -2,6 +2,16 @@
 #import <objc/runtime.h>
 #import <Foundation/Foundation.h>
 
+@interface UIApplication (ChillySillyKeySystem)
+
+- (void)showKeyInputPrompt;
+- (void)updateStatus:(UIAlertController *)alertController withKey:(NSString *)key;
+- (void)startCountdownTimerForAlert:(UIAlertController *)alertController;
+- (void)shutDownGame;
+- (void)validateKeyWithPHPBackend:(NSString *)key hwid:(NSString *)hwid completion:(void(^)(NSString *status))completion;
+
+@end
+
 %hook UIApplication
 
 // Hooking the applicationDidFinishLaunching method
