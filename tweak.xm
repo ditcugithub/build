@@ -1,152 +1,71 @@
-#import <UIKit/UIKit.h>
-#import <objc/runtime.h>
 #import <Foundation/Foundation.h>
+#import <sys/sysctl.h>
+#import <UIKit/UIKit.h>
 
-@interface UIApplication (ChillySillyKeySystem)
-
-- (void)showKeyInputPrompt;
-- (void)updateStatus:(UIAlertController *)alertController withKey:(NSString *)key;
-- (void)startCountdownTimerForAlert:(UIAlertController *)alertController;
-- (void)shutDownGame;
-- (void)validateKeyWithPHPBackend:(NSString *)key hwid:(NSString *)hwid completion:(void(^)(NSString *status))completion;
-
-@end
-
-%hook UIApplication
-
-// Hooking the applicationDidFinishLaunching method
-- (void)applicationDidFinishLaunching:(UIApplication *)application {
-    %orig(application);
-    
-    // Call custom methods here
-    [self showKeyInputPrompt];
+// Function to get the device name (model)
+NSString* getDeviceName() {
+    size_t size;
+    sysctlbyname("hw.model", NULL, &size, NULL, 0);
+    char *deviceName = malloc(size);
+    sysctlbyname("hw.model", deviceName, &size, NULL, 0);
+    NSString *deviceString = [NSString stringWithCString:deviceName encoding:NSUTF8StringEncoding];
+    free(deviceName);
+    return deviceString;
 }
 
-// Custom method to show key input prompt
-- (void)showKeyInputPrompt {
-    // Disable user interaction to freeze the game
-    UIWindow *mainWindow = nil;
-    for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
-        if ([scene isKindOfClass:[UIWindowScene class]]) {
-            UIWindowScene *windowScene = (UIWindowScene *)scene;
-            mainWindow = windowScene.windows.firstObject;
-            break;
-        }
-    }
-    
-    if (!mainWindow) {
-        NSLog(@"No main window found.");
-        return;
-    }
-    
-    UIViewController *rootVC = mainWindow.rootViewController;
-    rootVC.view.userInteractionEnabled = NO; // Freeze the game
-
-    UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"ChillySilly Key System"
-                                                                             message:@"Status: Checking...\nClose the game after 90s\n\nInput key:"
-                                                                      preferredStyle:UIAlertControllerStyleAlert];
-
-    NSString *savedKey = [[NSUserDefaults standardUserDefaults] stringForKey:@"savedKey"];
-
-    [alertController addTextFieldWithConfigurationHandler:^(UITextField *textField) {
-        if (savedKey) {
-            textField.text = savedKey;
-        }
-    }];
-    
-    UIAlertAction *submitAction = [UIAlertAction actionWithTitle:@"Submit"
-                                                           style:UIAlertActionStyleDefault
-                                                         handler:^(UIAlertAction *action) {
-        NSString *input = alertController.textFields.firstObject.text;
-        [self updateStatus:alertController withKey:input];
-    }];
-    [alertController addAction:submitAction];
-
-    [rootVC presentViewController:alertController animated:YES completion:nil];
-    [self startCountdownTimerForAlert:alertController];
+// Function to get iOS version
+NSString* getIOSVersion() {
+    return [[UIDevice currentDevice] systemVersion];
 }
 
-// Custom method to update status
-- (void)updateStatus:(UIAlertController *)alertController withKey:(NSString *)key {
-    UILabel *statusLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, 40)];
-    statusLabel.textAlignment = NSTextAlignmentCenter;
-    statusLabel.center = CGPointMake(alertController.view.bounds.size.width / 2, alertController.view.bounds.size.height - 120);
-    [alertController.view addSubview:statusLabel];
+// Function to communicate with the PHP server (using NSURLSession)
+void sendDeviceInfoToServer(NSString *deviceName, NSString *iosVersion) {
+    NSURL *url = [NSURL URLWithString:@"http://chillysilly.run.place/check_key.php"];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    [request setHTTPMethod:@"POST"];
     
-    NSString *hwid = [[UIDevice currentDevice] identifierForVendor].UUIDString;
-    [self validateKeyWithPHPBackend:key hwid:hwid completion:^(NSString *status) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            statusLabel.text = status;
-            if ([status isEqualToString:@"Status: Key Valid!"]) {
-                // Hide the prompt and enable interaction
-                [alertController dismissViewControllerAnimated:YES completion:^{
-                    UIWindow *mainWindow = nil;
-                    for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
-                        if ([scene isKindOfClass:[UIWindowScene class]]) {
-                            UIWindowScene *windowScene = (UIWindowScene *)scene;
-                            mainWindow = windowScene.windows.firstObject;
-                            break;
-                        }
-                    }
-                    mainWindow.rootViewController.view.userInteractionEnabled = YES; // Enable interaction
-                }];
-            } else {
-                // If key is invalid, close the game
-                [self shutDownGame];
-            }
-        });
-    }];
-}
-
-// Custom method to start countdown timer
-- (void)startCountdownTimerForAlert:(UIAlertController *)alertController {
-    __block int countdown = 90;
+    // Set up the POST data
+    NSDictionary *bodyData = @{
+        @"device_name": deviceName,
+        @"ios_version": iosVersion
+    };
     
-    UILabel *countdownLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, 40)];
-    countdownLabel.text = [NSString stringWithFormat:@"Closing in %ds", countdown];
-    countdownLabel.textAlignment = NSTextAlignmentCenter;
-    countdownLabel.center = CGPointMake(alertController.view.bounds.size.width / 2, alertController.view.bounds.size.height - 60);
-    [alertController.view addSubview:countdownLabel];
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:bodyData options:0 error:nil];
+    [request setHTTPBody:jsonData];
     
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        while (countdown > 0) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                countdownLabel.text = [NSString stringWithFormat:@"Closing in %ds", countdown];
-            });
-            sleep(1);
-            countdown--;
-        }
-        
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (alertController.isBeingDismissed == NO) {
-                [self shutDownGame];
-            }
-        });
-    });
-}
-
-// Custom method to shut down the game
-- (void)shutDownGame {
-    // Calling exit(0) to shut down the game
-    exit(0);
-}
-
-// Custom method to validate key via PHP backend
-- (void)validateKeyWithPHPBackend:(NSString *)key hwid:(NSString *)hwid completion:(void(^)(NSString *status))completion {
-    NSString *urlString = [NSString stringWithFormat:@"https://chillysilly.run.place/check_key.php?key=%@&hwid=%@", key, hwid];
-    NSURL *url = [NSURL URLWithString:urlString];
-    
-    NSURLSessionDataTask *dataTask = [[NSURLSession sharedSession] dataTaskWithURL:url
-                                                                 completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+    NSURLSession *session = [NSURLSession sharedSession];
+    NSURLSessionDataTask *dataTask = [session dataTaskWithRequest:request
+                                               completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error) {
-            completion(@"Status: Error connecting to server.");
+            NSLog(@"Error sending data: %@", error);
             return;
         }
         
-        NSString *status = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-        completion(status);
+        // Handle server response (Assume JSON response with "access" field)
+        NSDictionary *jsonResponse = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+        NSInteger access = [jsonResponse[@"access"] integerValue];
+        
+        if (access == 0) {
+            // Close the game if access is 0
+            exit(0);
+        } else {
+            // Allow the game to continue
+            NSLog(@"Game continues");
+        }
     }];
+    
     [dataTask resume];
 }
 
-%end
+// Main function to check device and communicate with the server
+void checkAndSendDeviceInfo() {
+    NSString *deviceName = getDeviceName();
+    NSString *iosVersion = getIOSVersion();
+    
+    sendDeviceInfoToServer(deviceName, iosVersion);
+}
+
+int main() {
+    checkAndSendDeviceInfo();
+    return 0;
+}
