@@ -3,32 +3,30 @@ name: Auto Build and Upload dylib
 on:
   push:
     branches:
-      - main  # This can be your branch name
+      - main
   pull_request:
     branches:
-      - main  # Trigger when opening a pull request
+      - main
 
 jobs:
   build:
-    runs-on: macos-latest  # You can adjust this based on your needs
+    runs-on: macos-latest
 
     steps:
-      # Checkout the code from the repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Set up Theos
       - name: Set up Theos
         run: |
+          # Clone Theos repository
           git clone --recursive https://github.com/theos/theos.git /tmp/theos
           export THEOS=/tmp/theos
           export PATH=$THEOS/bin:$PATH
 
-      # Automatically detect the directory containing the Makefile and Tweak.xm
       - name: Find Makefile and .xm files
         id: find_files
         run: |
-          # Automatically find the Makefile in the repository
+          # Find the Makefile and tweak.xm files
           MAKEFILE_PATH=$(find . -name "Makefile" | head -n 1)
           if [ -z "$MAKEFILE_PATH" ]; then
             echo "No Makefile found. Exiting..."
@@ -37,7 +35,6 @@ jobs:
           echo "Makefile found at $MAKEFILE_PATH"
           echo "MAKEFILE_PATH=$MAKEFILE_PATH" >> $GITHUB_ENV
 
-          # Automatically find the .xm file (Tweak.xm or any .xm file)
           XM_FILE_PATH=$(find . -name "*.xm" | head -n 1)
           if [ -z "$XM_FILE_PATH" ]; then
             echo "No .xm file found. Exiting..."
@@ -46,16 +43,19 @@ jobs:
           echo "Tweak source found at $XM_FILE_PATH"
           echo "XM_FILE_PATH=$XM_FILE_PATH" >> $GITHUB_ENV
 
-      # Build the dylib using make (using the detected Makefile)
       - name: Build dylib
         run: |
           echo "Building dylib using Makefile at $MAKEFILE_PATH"
           cd $(dirname $MAKEFILE_PATH)
+
+          # Set the THEOS directory for the build
+          export THEOS=/tmp/theos
+
+          # Run the make command
           make
 
-      # Upload the dylib as an artifact
       - name: Upload dylib artifact
         uses: actions/upload-artifact@v3
         with:
           name: my-dylib
-          path: $(dirname $MAKEFILE_PATH)/dylib_output  # Adjust path as needed
+          path: $(dirname $MAKEFILE_PATH)/dylib_output
