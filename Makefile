@@ -1,8 +1,19 @@
-TWEAK_NAME = ChillySillyTweak
-ChillySillyTweak_FILES = tweak.xm
-ChillySillyTweak_FRAMEWORKS = UIKit Foundation
-TARGET = iphone:clang:latest:5.0
+ARCHS = arm64 armv7 armv7s arm64e  # Specify all supported architectures
+TARGET = iphone:latest  # Set target device version
+# THEOS_DEVICE_IP = 192.168.1.10  # Optional, for remote building to a device
+LIBRARY_NAME = ChillySillyKeySystem  # The name of your dylib
 
-# Build a dylib (dynamic library)
-INSTALL_TARGET = /Library/MobileSubstrate/DynamicLibraries
-INSTALL_PATH = /Library/MobileSubstrate/DynamicLibraries
+# Frameworks you want to link
+LIBRARY_FRAMEWORKS = UIKit Foundation
+
+# Include the common.mk file from Theos
+include $(THEOS)/makefiles/common.mk
+
+# Specify the source files
+$(LIBRARY_NAME)_FILES = tweak.xm  # Your source file (change to the correct name if needed)
+
+# Specify the compiler flags
+$(LIBRARY_NAME)_CFLAGS = -fobjc-arc  # Enable ARC (Automatic Reference Counting)
+
+# Include the final rule to build the dylib
+include $(THEOS)/makefiles/library.mk
