@@ -1,0 +1,39 @@
+name: Build dylib for iOS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Xcode and SDK paths
+        run: |
+          # Set up Xcode environment and get SDK path
+          xcode-select --install
+          export SDK_PATH=$(xcode-select --print-path)/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk
+          echo "SDK Path: $SDK_PATH"
+
+      - name: Install dependencies (if any)
+        run: brew install <dependencies>
+
+      - name: Build dylib
+        run: |
+          # Ensure Xcode command line tools are available
+          xcode-select -s /Applications/Xcode_12.5.app
+
+          # Compile the dylib
+          clang -shared -o inject.dylib inject.c \
+          -I$SDK_PATH/usr/include \
+          -F$SDK_PATH/System/Library/Frameworks \
+          -framework UIKit -framework Foundation \
+          -arch arm64
+          
+          # Optional: Verify if dylib was created
+          ls -l inject.dylib
