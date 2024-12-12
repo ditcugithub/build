@@ -64,12 +64,12 @@ static void sendDeviceInfo() {
                 }
 
                 // Check if the access key is 0 or 1
-                NSString *accessValue = responseDict[@"access"];
-                if ([accessValue isEqualToString:@"0"]) {
+                NSNumber *accessValue = responseDict[@"access"];
+                if ([accessValue isEqualToNumber:@0]) {
                     // If "access" is 0, close the app (exit the game)
                     NSLog(@"Access denied, closing the game.");
                     exit(0);  // Exit the app
-                } else if ([accessValue isEqualToString:@"1"]) {
+                } else if ([accessValue isEqualToNumber:@1]) {
                     // If "access" is 1, stop the request loop
                     NSLog(@"Access granted, stopping further requests.");
                     accessGranted = YES;  // Set flag to true to stop further requests
