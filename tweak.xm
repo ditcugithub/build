@@ -59,8 +59,12 @@
 
 - (void)startCountdownTimerForAlert:(UIAlertController *)alertController {
     __block int countdown = 90;  // 90 seconds countdown
+    
+    // Create and configure the countdown label
     UILabel *countdownLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, 40)];
     countdownLabel.text = [NSString stringWithFormat:@"Closing in %ds", countdown];
+    countdownLabel.textAlignment = NSTextAlignmentCenter;
+    countdownLabel.center = CGPointMake(alertController.view.bounds.size.width / 2, alertController.view.bounds.size.height - 60);
     [alertController.view addSubview:countdownLabel];
 
     // Update countdown every second
@@ -83,8 +87,10 @@
 }
 
 - (void)updateStatus:(UIAlertController *)alertController withKey:(NSString *)key {
-    // Get the status label
+    // Create and configure the status label
     UILabel *statusLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, 40)];
+    statusLabel.textAlignment = NSTextAlignmentCenter;
+    statusLabel.center = CGPointMake(alertController.view.bounds.size.width / 2, alertController.view.bounds.size.height - 120);
     [alertController.view addSubview:statusLabel];
 
     // Collect HWID (identifierForVendor) for validation
@@ -92,12 +98,14 @@
 
     // Call PHP backend to validate the key and HWID
     [self validateKeyWithPHPBackend:key hwid:hwid completion:^(NSString *status) {
-        statusLabel.text = status;
-        if ([status isEqualToString:@"Status: Key Valid!"]) {
-            statusLabel.textColor = [UIColor greenColor]; // Green for valid key
-        } else {
-            statusLabel.textColor = [UIColor redColor]; // Red for invalid key or expired
-        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            statusLabel.text = status;
+            if ([status isEqualToString:@"Status: Key Valid!"]) {
+                statusLabel.textColor = [UIColor greenColor]; // Green for valid key
+            } else {
+                statusLabel.textColor = [UIColor redColor]; // Red for invalid key or expired
+            }
+        });
     }];
 }
 
