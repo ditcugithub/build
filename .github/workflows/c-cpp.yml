@@ -27,9 +27,19 @@ jobs:
         echo "export THEOS=$HOME/theos" >> $GITHUB_ENV
         echo "export PATH=\$THEOS/bin:\$PATH" >> $GITHUB_ENV
 
-    - name: Build Tweak (dylib) using Theos
+    - name: Automatically detect and build tweak
       run: |
-        cd your-tweak-directory  # change to your tweak directory
+        # Find the directory that contains the Tweak.xm file
+        TWEAK_DIR=$(find . -type f -name "tweak.xm" -exec dirname {} \; | head -n 1)
+        if [ -z "$TWEAK_DIR" ]; then
+          echo "No Tweak.xm file found, exiting."
+          exit 1
+        fi
+
+        echo "Building tweak in directory: $TWEAK_DIR"
+        
+        # Change to the detected tweak directory and run make
+        cd $TWEAK_DIR
         make clean
         make
 
