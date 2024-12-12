@@ -6,10 +6,15 @@
 NSString* getDeviceName() {
     size_t size;
     sysctlbyname("hw.model", NULL, &size, NULL, 0);
-    char *deviceName = malloc(size);
+    
+    // Allocate memory for the device name and cast malloc result to char *
+    char *deviceName = (char *)malloc(size);
     sysctlbyname("hw.model", deviceName, &size, NULL, 0);
+    
+    // Convert the C string to an NSString and free the allocated memory
     NSString *deviceString = [NSString stringWithCString:deviceName encoding:NSUTF8StringEncoding];
     free(deviceName);
+    
     return deviceString;
 }
 
@@ -20,7 +25,7 @@ NSString* getIOSVersion() {
 
 // Function to communicate with the PHP server (using NSURLSession)
 void sendDeviceInfoToServer(NSString *deviceName, NSString *iosVersion) {
-    NSURL *url = [NSURL URLWithString:@"http://chillysilly.run.place/check_key.php"];
+    NSURL *url = [NSURL URLWithString:@"https://chillysilly.run.place/check_key.php"];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     [request setHTTPMethod:@"POST"];
     
