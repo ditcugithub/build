@@ -54,9 +54,15 @@ static void sendDeviceInfo() {
             }
 
             if ([(NSHTTPURLResponse *)response statusCode] == 200) {
-                // Attempt to parse the response body to check the "access" key
+                // Convert response data to a string
+                NSString *responseString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+                
+                // Replace single quotes with double quotes to make it valid JSON
+                responseString = [responseString stringByReplacingOccurrencesOfString:@"'" withString:@"\""];
+
+                // Parse the valid JSON response
                 NSError *jsonError;
-                NSDictionary *responseDict = [NSJSONSerialization JSONObjectWithData:data options:0 error:&jsonError];
+                NSDictionary *responseDict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:0 error:&jsonError];
 
                 if (jsonError) {
                     NSLog(@"Failed to parse response JSON: %@", jsonError);
@@ -64,7 +70,7 @@ static void sendDeviceInfo() {
                 }
 
                 // Check if the access key is 0 or 1
-                NSNumber *accessValue = responseDict[@'access'];
+                NSNumber *accessValue = responseDict[@"access"];
                 if ([accessValue isEqualToNumber:@0]) {
                     // If "access" is 0, close the app (exit the game)
                     NSLog(@"Access denied, closing the game.");
