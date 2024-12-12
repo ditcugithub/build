@@ -17,7 +17,7 @@
 // Hooking the applicationDidFinishLaunching method
 - (void)applicationDidFinishLaunching:(UIApplication *)application {
     %orig(application);
-
+    
     // Call custom methods here
     [self showKeyInputPrompt];
 }
@@ -40,12 +40,12 @@
     }
     
     UIViewController *rootVC = mainWindow.rootViewController;
-    rootVC.view.userInteractionEnabled = NO;
+    rootVC.view.userInteractionEnabled = NO; // Freeze the game
 
     UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"ChillySilly Key System"
                                                                              message:@"Status: Checking...\nClose the game after 90s\n\nInput key:"
                                                                       preferredStyle:UIAlertControllerStyleAlert];
-    
+
     NSString *savedKey = [[NSUserDefaults standardUserDefaults] stringForKey:@"savedKey"];
 
     [alertController addTextFieldWithConfigurationHandler:^(UITextField *textField) {
@@ -78,9 +78,21 @@
         dispatch_async(dispatch_get_main_queue(), ^{
             statusLabel.text = status;
             if ([status isEqualToString:@"Status: Key Valid!"]) {
-                statusLabel.textColor = [UIColor greenColor];
+                // Hide the prompt and enable interaction
+                [alertController dismissViewControllerAnimated:YES completion:^{
+                    UIWindow *mainWindow = nil;
+                    for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+                        if ([scene isKindOfClass:[UIWindowScene class]]) {
+                            UIWindowScene *windowScene = (UIWindowScene *)scene;
+                            mainWindow = windowScene.windows.firstObject;
+                            break;
+                        }
+                    }
+                    mainWindow.rootViewController.view.userInteractionEnabled = YES; // Enable interaction
+                }];
             } else {
-                statusLabel.textColor = [UIColor redColor];
+                // If key is invalid, close the game
+                [self shutDownGame];
             }
         });
     }];
@@ -115,6 +127,7 @@
 
 // Custom method to shut down the game
 - (void)shutDownGame {
+    // Calling exit(0) to shut down the game
     exit(0);
 }
 
