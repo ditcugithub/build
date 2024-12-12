@@ -1,67 +1,61 @@
-name: Build Tweak (dylib) with Theos
+name: Auto Build and Upload dylib
 
 on:
   push:
     branches:
-      - main
+      - main  # This can be your branch name
+  pull_request:
+    branches:
+      - main  # Trigger when opening a pull request
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest  # You can adjust this based on your needs
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      # Checkout the code from the repo
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Set up Theos environment
-      run: |
-        sudo apt update
-        sudo apt install -y git
-        sudo apt install -y libtool
-        sudo apt install -y autoconf
-        sudo apt install -y curl
-        sudo apt install -y clang
-        sudo apt install -y make
-        # Install Theos
-        git clone https://github.com/theos/theos.git ~/theos
-        echo "export THEOS=$HOME/theos" >> $GITHUB_ENV
-        echo "export PATH=\$THEOS/bin:\$PATH" >> $GITHUB_ENV
+      # Set up Theos
+      - name: Set up Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git /tmp/theos
+          export THEOS=/tmp/theos
+          export PATH=$THEOS/bin:$PATH
 
-    - name: Automatically detect and build tweak
-      run: |
-        # Find the directory that contains the tweak.xm file (case-insensitive search)
-        TWEAK_DIR=$(find . -type f -iname "tweak.xm" -exec dirname {} \; | head -n 1)
-        if [ -z "$TWEAK_DIR" ]; then
-          echo "No tweak.xm file found, exiting."
-          exit 1
-        fi
+      # Automatically detect the directory containing the Makefile and Tweak.xm
+      - name: Find Makefile and .xm files
+        id: find_files
+        run: |
+          # Automatically find the Makefile in the repository
+          MAKEFILE_PATH=$(find . -name "Makefile" | head -n 1)
+          if [ -z "$MAKEFILE_PATH" ]; then
+            echo "No Makefile found. Exiting..."
+            exit 1
+          fi
+          echo "Makefile found at $MAKEFILE_PATH"
+          echo "MAKEFILE_PATH=$MAKEFILE_PATH" >> $GITHUB_ENV
 
-        echo "Building tweak in directory: $TWEAK_DIR"
-        
-        # Change to the detected tweak directory
-        cd $TWEAK_DIR
+          # Automatically find the .xm file (Tweak.xm or any .xm file)
+          XM_FILE_PATH=$(find . -name "*.xm" | head -n 1)
+          if [ -z "$XM_FILE_PATH" ]; then
+            echo "No .xm file found. Exiting..."
+            exit 1
+          fi
+          echo "Tweak source found at $XM_FILE_PATH"
+          echo "XM_FILE_PATH=$XM_FILE_PATH" >> $GITHUB_ENV
 
-        # Automatically find the Makefile (case-insensitive search)
-        MAKEFILE=$(find . -type f -iname "Makefile" | head -n 1)
-        if [ -z "$MAKEFILE" ]; then
-          echo "No Makefile found in $TWEAK_DIR, exiting."
-          exit 1
-        fi
+      # Build the dylib using make (using the detected Makefile)
+      - name: Build dylib
+        run: |
+          echo "Building dylib using Makefile at $MAKEFILE_PATH"
+          cd $(dirname $MAKEFILE_PATH)
+          make
 
-        echo "Using Makefile: $MAKEFILE"
-        
-        # Check if the Makefile contains a valid TWEAK_NAME target
-        if ! grep -q "TWEAK_NAME" "$MAKEFILE"; then
-          echo "No valid target (TWEAK_NAME) found in Makefile, exiting."
-          exit 1
-        fi
-
-        # Run the build
-        make clean || true  # Allow make clean to fail without stopping the process
-        make
-
-    - name: Upload dylib as artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: built-dylib
-        path: $TWEAK_DIR/.theos/obj/iphone/debug/arm64/libTweak.dylib  # Adjust path if necessary
+      # Upload the dylib as an artifact
+      - name: Upload dylib artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: my-dylib
+          path: $(dirname $MAKEFILE_PATH)/dylib_output  # Adjust path as needed
