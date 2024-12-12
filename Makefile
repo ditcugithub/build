@@ -18,9 +18,6 @@ CFLAGS += -I$(CURL_INCLUDE)  # Include curl headers
 # Specify the source files for your dylib
 ChillySillyKeySystem_FILES = tweak.xm  # Replace with the actual name of your source file
 
-# Compiler flags for enabling ARC (Automatic Reference Counting)
-$(LIBRARY_NAME)_CFLAGS = -no_warn_inits
-
 # Include the common.mk from Theos, which includes the basic build environment
 include $(THEOS)/makefiles/common.mk
 
