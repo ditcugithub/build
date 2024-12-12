@@ -25,7 +25,20 @@
 // Custom method to show key input prompt
 - (void)showKeyInputPrompt {
     // Disable user interaction to freeze the game
-    UIWindow *mainWindow = [UIApplication sharedApplication].connectedScenes.allObjects.firstObject.delegate.window;
+    UIWindow *mainWindow = nil;
+    for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+        if ([scene isKindOfClass:[UIWindowScene class]]) {
+            UIWindowScene *windowScene = (UIWindowScene *)scene;
+            mainWindow = windowScene.windows.firstObject;
+            break;
+        }
+    }
+    
+    if (!mainWindow) {
+        NSLog(@"No main window found.");
+        return;
+    }
+    
     UIViewController *rootVC = mainWindow.rootViewController;
     rootVC.view.userInteractionEnabled = NO;
 
@@ -62,7 +75,6 @@
     
     NSString *hwid = [[UIDevice currentDevice] identifierForVendor].UUIDString;
     [self validateKeyWithPHPBackend:key hwid:hwid completion:^(NSString *status) {
-        // Ensure UI updates happen on the main thread
         dispatch_async(dispatch_get_main_queue(), ^{
             statusLabel.text = status;
             if ([status isEqualToString:@"Status: Key Valid!"]) {
@@ -103,7 +115,6 @@
 
 // Custom method to shut down the game
 - (void)shutDownGame {
-    // Calling exit(0) to shut down the game
     exit(0);
 }
 
