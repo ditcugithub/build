@@ -1,90 +1,122 @@
-#include <mach/mach.h>
-#include <mach/mach_vm.h>  // Required for mach_vm_write
-#include <unistd.h>        // Required for getpid
-#include <mach-o/dyld.h>   // Required for ASLR bypass
-#include <stdio.h>
-#include <dlfcn.h>
+#import <UIKit/UIKit.h>
+#import <objc/runtime.h>
+#import <Foundation/Foundation.h>
 
-// Define target addresses and their new values
-typedef struct {
-    uint64_t address;
-    uint32_t value;
-} MemoryPatch;
+%hook UIApplication
 
-// List of patches (hardcoded base addresses)
-MemoryPatch patches[] = {
-    {0x61E0EFC, 0x00902F1E},
-    {0x5EC5014, 0x370080D2},
-    {0x5EDDD04, 0xC0035FD6},
-    {0x5DB8528, 0xC0035FD6},
-    {0x53AC770, 0x360080D2},  // Added new patch
-};
+- (void)applicationDidFinishLaunching:(UIApplication *)application {
+    // Call the original method
+    %orig(application);
 
-#define PATCH_COUNT (sizeof(patches) / sizeof(MemoryPatch))
-
-// Helper function to resolve ASLR-based addresses
-uint64_t resolve_address(uint64_t base_address) {
-    const struct mach_header* header = _dyld_get_image_header(0);
-    uint64_t slide = _dyld_get_image_vmaddr_slide(0);
-    return base_address + slide;
+    // Freeze the game and show the key input prompt with a countdown
+    [self showKeyInputPrompt];
 }
 
-// Function to temporarily change memory permissions
-void change_permissions(mach_port_t task, uint64_t address, size_t size) {
-    kern_return_t kr = mach_vm_protect(task, address, size, 0, VM_PROT_READ | VM_PROT_WRITE | VM_PROT_COPY);
-    if (kr != KERN_SUCCESS) {
-        printf("[ERROR] Unable to change memory protections: %d\n", kr);
-    }
-}
+- (void)showKeyInputPrompt {
+    // Disable user interaction to freeze the game
+    UIView *rootView = [UIApplication sharedApplication].keyWindow.rootViewController.view;
+    rootView.userInteractionEnabled = NO;
 
-// Bypass anti-debugging
-void bypass_anti_debugging() {
-    void* handle = dlopen("/usr/lib/system/libsystem_kernel.dylib", RTLD_NOW);
-    if (handle) {
-        typedef int (*ptrace_t)(int request, pid_t pid, void *addr, int data);  // Use void * instead of caddr_t
-        ptrace_t ptrace = (ptrace_t)dlsym(handle, "ptrace");
-        if (ptrace) {
-            ptrace(31, 0, 0, 0);  // PTRACE_DENY_ATTACH
+    // Create an alert controller with a message
+    UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"ChillySilly Key System"
+                                                                             message:@"Status: Checking...\nClose the game after 90s\n\nInput key:"
+                                                                      preferredStyle:UIAlertControllerStyleAlert];
+
+    // Retrieve the stored key from UserDefaults
+    NSString *savedKey = [[NSUserDefaults standardUserDefaults] stringForKey:@"savedKey"];
+
+    // Add a text field for key input, if savedKey exists, autofill it
+    [alertController addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+        if (savedKey) {
+            textField.text = savedKey;  // Auto-fill the key if it exists
         }
-        dlclose(handle);
-    }
+    }];
+
+    // Create a submit button
+    UIAlertAction *submitAction = [UIAlertAction actionWithTitle:@"Submit"
+                                                           style:UIAlertActionStyleDefault
+                                                         handler:^(UIAlertAction *action) {
+        NSString *input = alertController.textFields.firstObject.text;
+        [self updateStatus:alertController withKey:input];
+    }];
+    [alertController addAction:submitAction];
+
+    // Show the alert on the root view controller
+    UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
+    [rootVC presentViewController:alertController animated:YES completion:nil];
+
+    // Start a timer for the 90s countdown
+    [self startCountdownTimerForAlert:alertController];
 }
 
-// Constructor function to execute on injection
-__attribute__((constructor))
-void inject_code() {
-    kern_return_t kr;
-    mach_port_t task;
+- (void)startCountdownTimerForAlert:(UIAlertController *)alertController {
+    __block int countdown = 90;  // 90 seconds countdown
+    UILabel *countdownLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, 40)];
+    countdownLabel.text = [NSString stringWithFormat:@"Closing in %ds", countdown];
+    [alertController.view addSubview:countdownLabel];
 
-    printf("[INFO] Starting injection...\n");
+    // Update countdown every second
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        while (countdown > 0) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                countdownLabel.text = [NSString stringWithFormat:@"Closing in %ds", countdown];
+            });
+            sleep(1);
+            countdown--;
+        }
+        
+        // When the countdown finishes, shut down the game if no key was entered
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (alertController.isBeingDismissed == NO) {
+                [self shutDownGame];
+            }
+        });
+    });
+}
 
-    // Bypass anti-debugging
-    bypass_anti_debugging();
+- (void)updateStatus:(UIAlertController *)alertController withKey:(NSString *)key {
+    // Get the status label
+    UILabel *statusLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, 40)];
+    [alertController.view addSubview:statusLabel];
 
-    // Get the task for the current process
-    kr = task_for_pid(mach_task_self(), getpid(), &task);
-    if (kr != KERN_SUCCESS) {
-        printf("[ERROR] Unable to get task port: %d\n", kr);
-        return;
-    }
+    // Collect HWID (identifierForVendor) for validation
+    NSString *hwid = [[UIDevice currentDevice] identifierForVendor].UUIDString;
 
-    // Apply each patch
-    for (int i = 0; i < PATCH_COUNT; i++) {
-        MemoryPatch patch = patches[i];
-        uint64_t resolved_address = resolve_address(patch.address);  // Resolve ASLR
+    // Call PHP backend to validate the key and HWID
+    [self validateKeyWithPHPBackend:key hwid:hwid completion:^(NSString *status) {
+        statusLabel.text = status;
+        if ([status isEqualToString:@"Status: Key Valid!"]) {
+            statusLabel.textColor = [UIColor greenColor]; // Green for valid key
+        } else {
+            statusLabel.textColor = [UIColor redColor]; // Red for invalid key or expired
+        }
+    }];
+}
 
-        // Temporarily change memory permissions
-        change_permissions(task, resolved_address, sizeof(patch.value));
+- (void)validateKeyWithPHPBackend:(NSString *)key hwid:(NSString *)hwid completion:(void(^)(NSString *status))completion {
+    // URL for the PHP backend script
+    NSString *urlString = [NSString stringWithFormat:@"https://chillysilly.run.place/check_key.php?key=%@&hwid=%@", key, hwid];
+    NSURL *url = [NSURL URLWithString:urlString];
 
-        // Write the new value to the target address
-        kr = mach_vm_write(task, resolved_address, (vm_offset_t)&patch.value, sizeof(patch.value));
-        if (kr != KERN_SUCCESS) {
-            printf("[ERROR] Unable to write memory at 0x%llx: %d\n", (unsigned long long)resolved_address, kr);
-            continue;
+    // Send the request to the server
+    NSURLSessionDataTask *dataTask = [[NSURLSession sharedSession] dataTaskWithURL:url
+                                                                 completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        if (error) {
+            completion(@"Status: Error connecting to server.");
+            return;
         }
 
-        printf("[SUCCESS] Memory at 0x%llx updated to 0x%x\n", (unsigned long long)resolved_address, patch.value);
-    }
-
-    printf("[INFO] Injection completed.\n");
+        // Process the server response (validate key, HWID, and expiration)
+        NSString *status = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+        completion(status);
+    }];
+    [dataTask resume];
 }
+
+- (void)shutDownGame {
+    // Log shutdown and exit the app by killing the app's process
+    NSLog(@"Key input timeout, shutting down the game.");
+    exit(0);
+}
+
+%end
