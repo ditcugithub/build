@@ -22,7 +22,8 @@ jobs:
           git clone --recursive https://github.com/theos/theos.git /tmp/theos
           export THEOS=/tmp/theos
           export PATH=$THEOS/bin:$PATH
-
+          brew install ldid
+          
       - name: Find Makefile and .xm files
         id: find_files
         run: |
