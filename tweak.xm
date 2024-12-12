@@ -4,10 +4,10 @@
 
 %hook UIApplication
 
-// Hooking methods once and defining them correctly
+// Hooking the applicationDidFinishLaunching method
 - (void)applicationDidFinishLaunching:(UIApplication *)application {
     %orig(application);
-    
+
     // Call custom methods here
     [self showKeyInputPrompt];
 }
@@ -52,6 +52,7 @@
     
     NSString *hwid = [[UIDevice currentDevice] identifierForVendor].UUIDString;
     [self validateKeyWithPHPBackend:key hwid:hwid completion:^(NSString *status) {
+        // Ensure UI updates happen on the main thread
         dispatch_async(dispatch_get_main_queue(), ^{
             statusLabel.text = status;
             if ([status isEqualToString:@"Status: Key Valid!"]) {
@@ -92,6 +93,7 @@
 
 // Custom method to shut down the game
 - (void)shutDownGame {
+    // Calling exit(0) to shut down the game
     exit(0);
 }
 
