@@ -4,26 +4,28 @@
 
 %hook UIApplication
 
-// Declare the instance methods you're calling within the hook.
+// Declare the instance methods you're calling within the hook
 - (void)showKeyInputPrompt;
 - (void)updateStatus:(UIAlertController *)alertController withKey:(NSString *)key;
 - (void)startCountdownTimerForAlert:(UIAlertController *)alertController;
 - (void)shutDownGame;
 - (void)validateKeyWithPHPBackend:(NSString *)key hwid:(NSString *)hwid completion:(void(^)(NSString *status))completion;
 
+// Hook into applicationDidFinishLaunching method
 - (void)applicationDidFinishLaunching:(UIApplication *)application {
     // Call the original method
     %orig(application);
-
+    
     // Freeze the game and show the key input prompt with a countdown
     [self showKeyInputPrompt];
 }
 
+// Show Key Input Prompt Method
 - (void)showKeyInputPrompt {
     // Disable user interaction to freeze the game
     UIWindow *mainWindow = [UIApplication sharedApplication].connectedScenes.allObjects.firstObject.delegate.window;
-    UIView *rootView = mainWindow.rootViewController.view;
-    rootView.userInteractionEnabled = NO;
+    UIViewController *rootVC = mainWindow.rootViewController;
+    rootVC.view.userInteractionEnabled = NO;
 
     // Create an alert controller with a message
     UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"ChillySilly Key System"
@@ -50,13 +52,13 @@
     [alertController addAction:submitAction];
 
     // Show the alert on the root view controller
-    UIViewController *rootVC = mainWindow.rootViewController;
     [rootVC presentViewController:alertController animated:YES completion:nil];
 
     // Start a timer for the 90s countdown
     [self startCountdownTimerForAlert:alertController];
 }
 
+// Start Countdown Timer
 - (void)startCountdownTimerForAlert:(UIAlertController *)alertController {
     __block int countdown = 90;  // 90 seconds countdown
     
@@ -86,6 +88,7 @@
     });
 }
 
+// Update Status
 - (void)updateStatus:(UIAlertController *)alertController withKey:(NSString *)key {
     // Create and configure the status label
     UILabel *statusLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, 40)];
@@ -109,6 +112,7 @@
     }];
 }
 
+// Validate Key with PHP Backend
 - (void)validateKeyWithPHPBackend:(NSString *)key hwid:(NSString *)hwid completion:(void(^)(NSString *status))completion {
     // URL for the PHP backend script
     NSString *urlString = [NSString stringWithFormat:@"https://chillysilly.run.place/check_key.php?key=%@&hwid=%@", key, hwid];
@@ -129,6 +133,7 @@
     [dataTask resume];
 }
 
+// Shut Down Game
 - (void)shutDownGame {
     // Log shutdown and exit the app by killing the app's process
     NSLog(@"Key input timeout, shutting down the game.");
