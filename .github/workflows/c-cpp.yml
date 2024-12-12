@@ -1,32 +1,40 @@
-name: Build .dylib
+name: Build Tweak (dylib) with Theos
 
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-    - name: Install dependencies
+    - name: Set up Theos environment
       run: |
-        brew install ldid
+        sudo apt update
+        sudo apt install -y git
+        sudo apt install -y libtool
+        sudo apt install -y autoconf
+        sudo apt install -y curl
+        sudo apt install -y clang
+        sudo apt install -y make
+        # Install Theos
+        git clone https://github.com/theos/theos.git ~/theos
+        echo "export THEOS=$HOME/theos" >> $GITHUB_ENV
+        echo "export PATH=\$THEOS/bin:\$PATH" >> $GITHUB_ENV
 
-    - name: Build the .dylib
+    - name: Build Tweak (dylib) using Theos
       run: |
+        cd your-tweak-directory  # change to your tweak directory
         make clean
         make
 
-    - name: Upload .dylib as artifact
+    - name: Upload dylib as artifact
       uses: actions/upload-artifact@v3
       with:
-        name: libinject.dylib
-        path: ./libinject.dylib
+        name: built-dylib
+        path: ./your-tweak-directory/.theos/obj/iphone/debug/arm64/libChillySillyTweak.dylib  # Path to the generated dylib
