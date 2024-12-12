@@ -1,14 +1,23 @@
-ARCHS = arm64 arm64e
-TARGET = iphone:clang:latest:14.0
+# Compiler and flags
+CC = clang
+CFLAGS = -fPIC -Wall -I/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/usr/include
+LDFLAGS = -shared -undefined dynamic_lookup -lobjc
 
-include $(THEOS)/makefiles/common.mk
+# Source and output
+SRC = inject.c
+OBJ = $(SRC:.c=.o)
+OUTPUT = libinject.dylib
 
-TWEAK_NAME = ChillySillyKey
+# Build rule
+all: $(OUTPUT)
 
-ChillySillyKey_FILES = Tweak.xm
-ChillySillyKey_CFLAGS = -fobjc-arc
+$(OUTPUT): $(OBJ)
+	$(CC) $(OBJ) -o $(OUTPUT) $(LDFLAGS)
 
-include $(THEOS_MAKE_PATH)/tweak.mk
+# Compile the .c file to an object file
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-after-install::
-	install.exec "killall -9 SpringBoard"
+# Clean build files
+clean:
+	rm -f $(OBJ) $(OUTPUT)
