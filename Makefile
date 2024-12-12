@@ -13,7 +13,7 @@ include $(THEOS)/makefiles/common.mk
 # $(LIBRARY_NAME)_FILES = tweak.xm  # Your source file (change to the correct name if needed)
 ChillySillyKeySystem_FILES = tweak.xm
 # Specify the compiler flags
-$(LIBRARY_NAME)_CFLAGS = -fobjc-arc  # Enable ARC (Automatic Reference Counting)
-
+$(LIBRARY_NAME)_CFLAGS = -no_warn_inits  # Enable ARC (Automatic Reference Counting)
+# Add this line under the appropriate target
 # Include the final rule to build the dylib
 include $(THEOS)/makefiles/library.mk
