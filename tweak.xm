@@ -17,7 +17,7 @@ long extract_number(const char *filename, const char *prefix) {
     char *end = strchr(start, '_');
     if (!end) return -1;
 
-    char number_str[13]; // 12 digits max + null terminator
+    char number_str[10]; // 12 digits max + null terminator
     strncpy(number_str, start, end - start);
     number_str[end - start] = '\0';
 
