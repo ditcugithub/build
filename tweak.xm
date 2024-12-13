@@ -1,5 +1,12 @@
 #import <Foundation/Foundation.h>
 
+// Helper function to extract the numeric part of the file name
+static NSNumber *extractNumberFromFileName(NSString *fileName, NSString *prefix, NSString *suffix) {
+    NSString *trimmedFileName = [fileName stringByReplacingOccurrencesOfString:prefix withString:@""];
+    trimmedFileName = [trimmedFileName stringByReplacingOccurrencesOfString:suffix withString:@""];
+    return @([trimmedFileName longLongValue]);  // Convert to a number
+}
+
 __attribute__((constructor))
 static void processFilesInDocuments() {
     // Get the path to the Documents directory
@@ -8,13 +15,6 @@ static void processFilesInDocuments() {
     // Define the file patterns for processing
     NSArray<NSString *> *filePrefixes = @[@"item_data_", @"season_data_", @"statistic_id_"];
     NSString *fileSuffix = @".data";
-
-    // Helper function to extract the numeric part of the file name
-    NSNumber *extractNumberFromFileName(NSString *fileName, NSString *prefix, NSString *suffix) {
-        NSString *trimmedFileName = [fileName stringByReplacingOccurrencesOfString:prefix withString:@""];
-        trimmedFileName = [trimmedFileName stringByReplacingOccurrencesOfString:suffix withString:@""];
-        return @([trimmedFileName longLongValue]);  // Convert to a number
-    }
 
     // Iterate over each file prefix to process files
     for (NSString *prefix in filePrefixes) {
