@@ -15,7 +15,7 @@ static void processFilesInDocuments() {
     // Define the file patterns for processing
     NSArray<NSString *> *filePrefixes = @[@"item_data_", @"season_data_", @"statistic_"];
     NSString *fileSuffix = @"_.data";
-
+    
     // Iterate over each file prefix to process files
     for (NSString *prefix in filePrefixes) {
         // Get all files in the Documents directory
@@ -72,6 +72,50 @@ static void processFilesInDocuments() {
             NSLog(@"Renamed file: %@ -> %@", fileToRename, newFileName);
         } else {
             NSLog(@"Failed to rename file: %@, error: %@", fileToRename, renameError.localizedDescription);
+        }
+
+        // Find and edit `com.ChillyRoom.DungeonShooter.ChillySilly.xml`
+        NSString *xmlFilePath = [documentsDirectory stringByAppendingPathComponent:@"com.ChillyRoom.DungeonShooter.ChillySilly.xml"];
+        if ([[NSFileManager defaultManager] fileExistsAtPath:xmlFilePath]) {
+            NSError *xmlReadError = nil;
+            NSString *xmlContent = [NSString stringWithContentsOfFile:xmlFilePath encoding:NSUTF8StringEncoding error:&xmlReadError];
+            if (xmlContent) {
+                // Replace all occurrences of the smaller number with the larger number
+                NSString *updatedXmlContent = [xmlContent stringByReplacingOccurrencesOfString:smallerNumber.stringValue withString:largerNumber.stringValue];
+
+                // Write the updated content back to the XML file
+                NSError *xmlWriteError = nil;
+                if ([updatedXmlContent writeToFile:xmlFilePath atomically:YES encoding:NSUTF8StringEncoding error:&xmlWriteError]) {
+                    NSLog(@"Updated XML file: %@", xmlFilePath);
+
+                    // Convert the updated XML file to a plist
+                    NSString *preferencesDirectory = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) firstObject];
+                    NSString *plistFilePath = [preferencesDirectory stringByAppendingPathComponent:@"Preferences/com.ChillyRoom.DungeonShooter.ChillySilly.plist"];
+                    NSData *xmlData = [updatedXmlContent dataUsingEncoding:NSUTF8StringEncoding];
+                    NSError *plistConversionError = nil;
+                    NSDictionary *plistData = [NSPropertyListSerialization propertyListWithData:xmlData options:NSPropertyListMutableContainersAndLeaves format:nil error:&plistConversionError];
+                    if (plistData) {
+                        NSData *plistDataSerialized = [NSPropertyListSerialization dataWithPropertyList:plistData format:NSPropertyListBinaryFormat_v1_0 options:0 error:&plistConversionError];
+                        if (plistDataSerialized) {
+                            if ([plistDataSerialized writeToFile:plistFilePath atomically:YES]) {
+                                NSLog(@"Converted and overwrote plist file: %@", plistFilePath);
+                            } else {
+                                NSLog(@"Failed to write plist file: %@", plistFilePath);
+                            }
+                        } else {
+                            NSLog(@"Failed to serialize plist data: %@", plistConversionError.localizedDescription);
+                        }
+                    } else {
+                        NSLog(@"Failed to parse XML to plist data: %@", plistConversionError.localizedDescription);
+                    }
+                } else {
+                    NSLog(@"Failed to write updated XML content: %@", xmlWriteError.localizedDescription);
+                }
+            } else {
+                NSLog(@"Failed to read XML file: %@", xmlReadError.localizedDescription);
+            }
+        } else {
+            NSLog(@"XML file not found in Documents directory: %@", xmlFilePath);
         }
     }
 }
