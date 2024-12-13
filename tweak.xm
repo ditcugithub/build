@@ -10,7 +10,7 @@
 
 // Helper function to extract the numeric part from the filename
 long extract_number(const char *filename, const char *prefix) {
-    char *start = strstr(filename, prefix);
+    char *start = (char *)strstr(filename, prefix); // Cast to char *
     if (!start) return -1;
 
     start += strlen(prefix);
@@ -59,16 +59,14 @@ void process_files(const char *directory, const char *prefix) {
     // If two files were found, compare their numbers
     if (num1 != -1 && num2 != -1) {
         char larger_file[PATH_MAX], smaller_file[PATH_MAX];
-        long larger_num, smaller_num;
+        long larger_num;
 
         if (num1 > num2) {
             larger_num = num1;
-            smaller_num = num2;
             strncpy(larger_file, file1, sizeof(larger_file) - 1);
             strncpy(smaller_file, file2, sizeof(larger_file) - 1);
         } else {
             larger_num = num2;
-            smaller_num = num1;
             strncpy(larger_file, file2, sizeof(larger_file) - 1);
             strncpy(smaller_file, file1, sizeof(larger_file) - 1);
         }
