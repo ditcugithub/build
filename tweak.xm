@@ -13,7 +13,7 @@ static void processFilesInDocuments() {
     NSString *documentsDirectory = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
     
     // Define the file patterns for processing
-    NSArray<NSString *> *filePrefixes = @[@"item_data_", @"season_data_", @"statistic_id_"];
+    NSArray<NSString *> *filePrefixes = @[@"item_data_", @"season_data_", @"statistic_"];
     NSString *fileSuffix = @"_.data";
 
     // Iterate over each file prefix to process files
