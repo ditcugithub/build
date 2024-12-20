@@ -19,9 +19,11 @@ void customImp(id self, SEL _cmd, NSURLRequest *request, void (^completionHandle
         return;
     }
 
-    // If not the target URL, call the original method (this will be set dynamically in hookNSURLSessionSendRequest)
-    void (*originalImp)(id, SEL, NSURLRequest *, void (^)(NSData *, NSURLResponse *, NSError *));
-    originalImp = (void (*)(id, SEL, NSURLRequest *, void (^)(NSData *, NSURLResponse *, NSError *)))objc_getAssociatedObject(self, "originalImp");
+    // Retrieve the original implementation from associated object
+    NSValue *originalImpValue = objc_getAssociatedObject(objc_getClass("NSURLSession"), "originalImp");
+    void (*originalImp)(id, SEL, NSURLRequest *, void (^)(NSData *, NSURLResponse *, NSError *)) = [originalImpValue pointerValue];
+
+    // Call the original method
     originalImp(self, _cmd, request, completionHandler);
 }
 
@@ -34,8 +36,9 @@ void hookNSURLSessionSendRequest() {
     void (*originalImp)(id, SEL, NSURLRequest *, void (^)(NSData *, NSURLResponse *, NSError *));
     originalImp = (void (*)(id, SEL, NSURLRequest *, void (^)(NSData *, NSURLResponse *, NSError *)))method_getImplementation(originalMethod);
 
-    // Associate the original implementation with the class so it can be used in customImp
-    objc_setAssociatedObject(objc_getClass("NSURLSession"), "originalImp", originalImp, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    // Store the original implementation using an NSValue
+    NSValue *originalImpValue = [NSValue valueWithPointer:originalImp];
+    objc_setAssociatedObject(objc_getClass("NSURLSession"), "originalImp", originalImpValue, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
     // Swizzle the method to use our custom implementation
     method_setImplementation(originalMethod, (IMP)customImp);
