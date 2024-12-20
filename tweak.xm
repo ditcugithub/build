@@ -1,3 +1,5 @@
+#import <Foundation/Foundation.h>
+
 #include <stdio.h>
 #include <objc/runtime.h>
 #include <objc/message.h>
