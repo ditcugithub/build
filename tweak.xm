@@ -1,25 +1,12 @@
-#include <objc/runtime.h>
-#include <objc/message.h>
 #import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
 
-void (*original_showMenu)(id, SEL); // Function pointer for the original method
+%hook ViewController
+// Replace 'ViewController' with the class responsible for the popup
 
-void custom_showMenu(id self, SEL _cmd) {
-    // Prevent the menu from showing
-    NSLog(@"Menu show blocked!");
+- (void)showPopup {
+    // Prevent the popup from showing by overriding the method
+    NSLog(@"Popup blocked!");
     return;
 }
-
-__attribute__((constructor))
-static void initialize() {
-    Class menuClass = objc_getClass("UIMenuController"); // Replace with the relevant class for your target
-    SEL selector = @selector(setMenuVisible:animated:);  // Replace with the target method's selector
-    Method originalMethod = class_getInstanceMethod(menuClass, selector);
-
-    if (originalMethod) {
-        original_showMenu = (void (*)(id, SEL))method_getImplementation(originalMethod); // Cast properly
-        method_setImplementation(originalMethod, (IMP)custom_showMenu);
-    } else {
-        NSLog(@"Failed to find method to hook.");
-    }
-}
+%end
