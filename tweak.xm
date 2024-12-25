@@ -1,6 +1,6 @@
 #include <objc/runtime.h>
 #include <objc/message.h>
-#import <Cocoa/Cocoa.h>
+#import <UIKit/UIKit.h>
 
 void (*original_showMenu)(id, SEL);
 
