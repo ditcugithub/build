@@ -6,6 +6,7 @@
 + (void)startTimedEvents:(NSArray *)songNotes;
 + (void)uploadButtonPressed:(UIButton *)button;
 + (void)loadButtonPressed:(UIButton *)button;
++ (void)deleteButtonPressed:(UIButton *)button;
 + (void)startStopButtonPressed:(UIButton *)button;
 @end
 
@@ -17,6 +18,7 @@ static NSArray *songNotesArray = nil;  // Store the song notes for playback
 static NSInteger currentIndex = 0;  // Index to track the current event
 static NSString *sheetDirectory; // Directory for storing the files
 static NSMutableDictionary<NSString *, UIView *> *keyViews; // Dictionary to track key views
+static NSString *mainFile; // The current main file to be read when starting
 
 __attribute__((constructor))
 static void initialize() {
@@ -61,6 +63,7 @@ static void initialize() {
                 keyLabel.backgroundColor = [UIColor lightGrayColor];
                 keyLabel.layer.cornerRadius = 10;
                 keyLabel.layer.masksToBounds = YES;
+                keyLabel.font = [UIFont systemFontOfSize:10];  // Set smaller font size
                 keyLabel.userInteractionEnabled = YES;
 
                 // Add pan gesture to move the key
@@ -91,9 +94,19 @@ static void initialize() {
             [loadButton addGestureRecognizer:loadPanGesture];
             [window addSubview:loadButton];
 
+            // Delete Button
+            UIButton *deleteButton = [UIButton buttonWithType:UIButtonTypeSystem];
+            deleteButton.frame = CGRectMake(220, 100, 80, 50);
+            [deleteButton setTitle:@"Delete" forState:UIControlStateNormal];
+            [deleteButton addTarget:[Tweak class] action:@selector(deleteButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
+            deleteButton.userInteractionEnabled = YES;
+            UIPanGestureRecognizer *deletePanGesture = [[UIPanGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePan:)];
+            [deleteButton addGestureRecognizer:deletePanGesture];
+            [window addSubview:deleteButton];
+
             // Start Button
             UIButton *startButton = [UIButton buttonWithType:UIButtonTypeSystem];
-            startButton.frame = CGRectMake(220, 100, 80, 50);
+            startButton.frame = CGRectMake(320, 100, 80, 50);
             [startButton setTitle:@"Start" forState:UIControlStateNormal];
             [startButton addTarget:[Tweak class] action:@selector(startStopButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
             startButton.userInteractionEnabled = YES;
@@ -187,12 +200,56 @@ static void initialize() {
 
     if (files.count > 0) {
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Load File"
-                                                                       message:@"Select a file to load:"
+                                                                       message:@"Select a file to set as main:"
                                                                 preferredStyle:UIAlertControllerStyleAlert];
         
         for (NSString *file in files) {
             UIAlertAction *fileAction = [UIAlertAction actionWithTitle:file style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-                [self loadFile:file];
+                // Set the selected file as the main file
+                mainFile = file;
+                NSLog(@"Main file set to: %@", mainFile);
+            }];
+            [alert addAction:fileAction];
+        }
+        [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+        
+        // Present the alert
+        UIWindow *window = nil;
+        if (@available(iOS 15.0, *)) {
+            for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+                if ([scene isKindOfClass:[UIWindowScene class]]) {
+                    window = ((UIWindowScene *)scene).keyWindow; // Get the key window from the window scene
+                    break;
+                }
+            }
+        } else {
+            window = UIApplication.sharedApplication.delegate.window; // Use delegate's window for older iOS versions
+        }
+        [window.rootViewController presentViewController:alert animated:YES completion:nil];
+    } else {
+        NSLog(@"No files found in the sheet directory.");
+    }
+}
+
++ (void)deleteButtonPressed:(UIButton *)button {
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSArray *files = [fileManager contentsOfDirectoryAtPath:sheetDirectory error:nil];
+
+    if (files.count > 0) {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Delete File"
+                                                                       message:@"Select a file to delete:"
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        
+        for (NSString *file in files) {
+            UIAlertAction *fileAction = [UIAlertAction actionWithTitle:file style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
+                // Delete the selected file
+                NSString *filePath = [sheetDirectory stringByAppendingPathComponent:file];
+                NSError *error = nil;
+                if ([fileManager removeItemAtPath:filePath error:&error]) {
+                    NSLog(@"File deleted: %@", file);
+                } else {
+                    NSLog(@"Failed to delete file: %@", error.localizedDescription);
+                }
             }];
             [alert addAction:fileAction];
         }
