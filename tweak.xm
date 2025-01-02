@@ -20,8 +20,8 @@ static void initialize() {
     dispatch_async(dispatch_get_main_queue(), ^{
         UIWindow *window = nil;
 
-        // Check if the app supports scenes (iOS 13.0+)
-        if (@available(iOS 13.0, *)) {
+        // Use UIWindowScene for iOS 15 and later
+        if (@available(iOS 15.0, *)) {
             // Access the first connected UIWindowScene (ensures compatibility with multiple scenes)
             UIWindowScene *windowScene = nil;
             for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
@@ -35,8 +35,8 @@ static void initialize() {
                 window = windowScene.windows.firstObject;  // Access the first window in the scene
             }
         } else {
-            // Fallback for older iOS versions (pre-iOS 13.0)
-            window = UIApplication.sharedApplication.keyWindow;  // Deprecated in iOS 13.0+, but still works in older versions
+            // Fallback for older iOS versions (this block is not needed in iOS 15+)
+            // window = UIApplication.sharedApplication.keyWindow;
         }
 
         if (window) {
@@ -175,7 +175,7 @@ static void initialize() {
         [timer invalidate];
         timer = nil;
         isPlaying = NO;
-        UIButton *startStopButton = [UIApplication.sharedApplication.windows.firstObject viewWithTag:100];  // Retrieve the Start/Stop button
+        UIButton *startStopButton = [UIApplication.sharedApplication.connectedScenes.allObjects.firstObject viewWithTag:100];  // Retrieve the Start/Stop button
         [startStopButton setTitle:@"Start" forState:UIControlStateNormal];  // Change button text back to "Start"
     }
 }
