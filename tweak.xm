@@ -116,18 +116,48 @@ static void initialize() {
         NSURL *url = [NSURL URLWithString:urlString];
         
         if (url) {
-            NSURLSession *session = [NSURLSession sharedSession];
-            [[session dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-                if (data) {
-                    // Save the file to the "sheet" directory
-                    NSString *filePath = [sheetDirectory stringByAppendingPathComponent:@"song.txt"];
-                    [data writeToFile:filePath atomically:YES];
+            // Prompt for the file name
+            UIAlertController *fileNameAlert = [UIAlertController alertControllerWithTitle:@"File Name"
+                                                                                  message:@"Enter the name for the downloaded file:"
+                                                                           preferredStyle:UIAlertControllerStyleAlert];
+            [fileNameAlert addTextFieldWithConfigurationHandler:nil];
 
-                    NSLog(@"File downloaded and saved to: %@", filePath);
+            UIAlertAction *downloadAction = [UIAlertAction actionWithTitle:@"Download" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+                NSString *fileName = fileNameAlert.textFields[0].text;
+                if (fileName.length > 0) {
+                    NSURLSession *session = [NSURLSession sharedSession];
+                    [[session dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+                        if (data) {
+                            // Save the file to the "sheet" directory with the specified name
+                            NSString *filePath = [sheetDirectory stringByAppendingPathComponent:fileName];
+                            [data writeToFile:filePath atomically:YES];
+
+                            NSLog(@"File downloaded and saved to: %@", filePath);
+                        } else {
+                            NSLog(@"Failed to download file: %@", error.localizedDescription);
+                        }
+                    }] resume];
                 } else {
-                    NSLog(@"Failed to download file: %@", error.localizedDescription);
+                    NSLog(@"Invalid file name");
                 }
-            }] resume];
+            }];
+            
+            [fileNameAlert addAction:downloadAction];
+            [fileNameAlert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+            
+            // Present the file name alert
+            UIWindow *window = nil;
+            if (@available(iOS 15.0, *)) {
+                for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+                    if ([scene isKindOfClass:[UIWindowScene class]]) {
+                        window = ((UIWindowScene *)scene).keyWindow; // Get the key window from the window scene
+                        break;
+                    }
+                }
+            } else {
+                window = UIApplication.sharedApplication.delegate.window; // Use delegate's window for older iOS versions
+            }
+            [window.rootViewController presentViewController:fileNameAlert animated:YES completion:nil];
         } else {
             NSLog(@"Invalid URL");
         }
@@ -136,7 +166,7 @@ static void initialize() {
     [alert addAction:submitAction];
     [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     
-    // Present the alert
+    // Present the alert for URL input
     UIWindow *window = nil;
     if (@available(iOS 15.0, *)) {
         for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
