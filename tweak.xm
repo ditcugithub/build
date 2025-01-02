@@ -35,7 +35,7 @@ static void initialize() {
             }
         } else {
             // Fallback for older iOS versions
-            window = UIApplication.sharedApplication.keyWindow; // This line can be retained for compatibility.
+            window = UIApplication.sharedApplication.delegate.window; // Use delegate's window for backward compatibility
         }
 
         if (window) {
