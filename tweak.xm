@@ -1,211 +1,176 @@
-#include <objc/runtime.h>
 #import <UIKit/UIKit.h>
 
 @interface Tweak : NSObject
 + (void)handlePan:(UIPanGestureRecognizer *)gesture;
 + (void)handlePinch:(UIPinchGestureRecognizer *)gesture;
-+ (void)createNumberLabelsAndButtons;
-+ (void)uploadFileFromURL:(NSString *)urlString;
 + (void)startTimedEvents:(NSArray *)songNotes;
-+ (void)showMessage:(NSString *)message;
++ (void)startStopButtonPressed:(UIButton *)button;
++ (void)uploadButtonPressed:(UIButton *)button;
 @end
 
 @implementation Tweak
 
-static NSMutableArray *labels;
-static NSMutableArray *buttons;
+static BOOL isPlaying = NO;  // Track whether events are playing
+static NSTimer *timer = nil;  // Timer for event playback
+static NSArray *songNotesArray = nil;  // Store the song notes for playback
+static NSInteger currentIndex = 0;  // Index to track the current event
 
 __attribute__((constructor))
 static void initialize() {
-    labels = [NSMutableArray array];
-    buttons = [NSMutableArray array];
-    
     dispatch_async(dispatch_get_main_queue(), ^{
-        // Create number labels and upload buttons on the screen
-        [Tweak createNumberLabelsAndButtons];
+        UIWindow *window = nil;
+
+        if (@available(iOS 13.0, *)) {
+            window = UIApplication.sharedApplication.windows.firstObject;  // For iOS 13+
+        } else {
+            window = UIApplication.sharedApplication.keyWindow;  // For older versions
+        }
+
+        if (window) {
+            // Calculate number of rows and columns (3 rows, 5 columns)
+            int numRows = 3;
+            int numColumns = 5;
+
+            // Size of each label
+            CGFloat labelWidth = 50;
+            CGFloat labelHeight = 50;
+
+            // Calculate the starting point to center the numbers
+            CGFloat screenWidth = window.bounds.size.width;
+            CGFloat screenHeight = window.bounds.size.height;
+
+            CGFloat totalWidth = labelWidth * numColumns + 10 * (numColumns - 1); // space between labels
+            CGFloat totalHeight = labelHeight * numRows + 10 * (numRows - 1); // space between labels
+
+            CGFloat startX = (screenWidth - totalWidth) / 2;
+            CGFloat startY = (screenHeight - totalHeight) / 2;
+
+            // Create a label for each number (0 to 14)
+            for (int i = 0; i < 15; i++) {
+                int row = i / numColumns;
+                int col = i % numColumns;
+
+                // Position each label dynamically
+                UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(startX + (labelWidth + 10) * col, startY + (labelHeight + 10) * row, labelWidth, labelHeight)];
+                label.text = [NSString stringWithFormat:@"Key%d", i];  // Display Key0-Key14
+                label.font = [UIFont systemFontOfSize:14];
+                label.textAlignment = NSTextAlignmentCenter;
+                label.textColor = [UIColor blackColor];
+                label.backgroundColor = [UIColor lightGrayColor];
+                label.layer.cornerRadius = 15;
+                label.layer.masksToBounds = YES;
+
+                // Add the label to the window
+                [window addSubview:label];
+
+                // Enable user interaction on the label
+                label.userInteractionEnabled = YES;
+
+                // Add a pan gesture recognizer to move the label
+                UIPanGestureRecognizer *panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePan:)];
+                [label addGestureRecognizer:panGesture];
+
+                // Add a pinch gesture recognizer to zoom the label
+                UIPinchGestureRecognizer *pinchGesture = [[UIPinchGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePinch:)];
+                [label addGestureRecognizer:pinchGesture];
+
+                // Add the "Upload" button next to the number label
+                UIButton *uploadButton = [UIButton buttonWithType:UIButtonTypeSystem];
+                uploadButton.frame = CGRectMake(label.frame.origin.x - 60, label.frame.origin.y, 50, labelHeight);  // Positioned to the left of the number
+                [uploadButton setTitle:@"Upload" forState:UIControlStateNormal];
+                uploadButton.titleLabel.font = [UIFont systemFontOfSize:12];
+                [uploadButton addTarget:[Tweak class] action:@selector(uploadButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
+                [window addSubview:uploadButton];
+            }
+
+            // Add the "Start/Stop" button
+            UIButton *startStopButton = [UIButton buttonWithType:UIButtonTypeSystem];
+            startStopButton.frame = CGRectMake(screenWidth - 80, screenHeight / 2 - 25, 60, 50);  // Positioned on the right side
+            [startStopButton setTitle:@"Start" forState:UIControlStateNormal];
+            startStopButton.titleLabel.font = [UIFont systemFontOfSize:14];
+            [startStopButton addTarget:[Tweak class] action:@selector(startStopButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
+            startStopButton.layer.cornerRadius = 25;
+            startStopButton.layer.masksToBounds = YES;
+            startStopButton.backgroundColor = [UIColor lightGrayColor];
+            [window addSubview:startStopButton];
+        }
     });
 }
 
-+ (void)createNumberLabelsAndButtons {
-    UIWindow *window = [UIApplication sharedApplication].keyWindow;
-    if (!window) return;
-    
-    int numRows = 3;
-    int numColumns = 5;
-    CGFloat labelWidth = 50;
-    CGFloat labelHeight = 50;
-    CGFloat buttonWidth = 70;
-    CGFloat buttonHeight = 50;
-    
-    CGFloat screenWidth = window.bounds.size.width;
-    CGFloat screenHeight = window.bounds.size.height;
-    
-    CGFloat totalWidth = labelWidth * numColumns + 10 * (numColumns - 1);
-    CGFloat totalHeight = labelHeight * numRows + 10 * (numRows - 1);
-    
-    CGFloat startX = (screenWidth - totalWidth) / 2;
-    CGFloat startY = (screenHeight - totalHeight) / 2;
-    
-    // Create a label and button for each key (Key0 to Key14)
-    for (int i = 0; i < 15; i++) {
-        int row = i / numColumns;
-        int col = i % numColumns;
-        
-        // Create number label
-        UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(startX + (labelWidth + 10) * col, startY + (labelHeight + 10) * row, labelWidth, labelHeight)];
-        label.text = [NSString stringWithFormat:@"Key%d", i]; // Key0 to Key14
-        label.font = [UIFont systemFontOfSize:14];
-        label.textAlignment = NSTextAlignmentCenter;
-        label.textColor = [UIColor blackColor];
-        label.backgroundColor = [UIColor lightGrayColor];
-        label.layer.cornerRadius = 15;
-        label.layer.masksToBounds = YES;
-        
-        // Add the label to the window
-        [window addSubview:label];
-        
-        // Enable user interaction
-        label.userInteractionEnabled = YES;
-        
-        // Add pan and pinch gestures to move and resize the labels
-        UIPanGestureRecognizer *panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePan:)];
-        [label addGestureRecognizer:panGesture];
-        
-        UIPinchGestureRecognizer *pinchGesture = [[UIPinchGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePinch:)];
-        [label addGestureRecognizer:pinchGesture];
-        
-        // Add the label to the list of labels
-        [labels addObject:label];
-        
-        // Create an upload button next to the label
-        UIButton *uploadButton = [[UIButton alloc] initWithFrame:CGRectMake(startX + (labelWidth + 10) * col - buttonWidth - 5, startY + (labelHeight + 10) * row, buttonWidth, buttonHeight)];
-        [uploadButton setTitle:@"Upload" forState:UIControlStateNormal];
-        [uploadButton setBackgroundColor:[UIColor blueColor]];
-        uploadButton.layer.cornerRadius = 15;
-        uploadButton.layer.masksToBounds = YES;
-        [uploadButton addTarget:[Tweak class] action:@selector(uploadFileFromURL:) forControlEvents:UIControlEventTouchUpInside];
-        
-        // Add the upload button to the window
-        [window addSubview:uploadButton];
-        
-        // Enable user interaction for the button
-        uploadButton.userInteractionEnabled = YES;
-        
-        // Add pan gesture for the upload button
-        UIPanGestureRecognizer *buttonPanGesture = [[UIPanGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePan:)];
-        [uploadButton addGestureRecognizer:buttonPanGesture];
-        
-        // Add the button to the list of buttons
-        [buttons addObject:uploadButton];
-    }
-}
-
-+ (void)uploadFileFromURL:(NSString *)urlString {
-    // Create a UIAlertController to input URL
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Enter URL" message:@"Paste the URL to download the sheet file" preferredStyle:UIAlertControllerStyleAlert];
-    
-    [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
-        textField.placeholder = @"https://example.com/sheet.txt";
-    }];
-    
-    UIAlertAction *uploadAction = [UIAlertAction actionWithTitle:@"Download and Upload" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-        // Get the URL entered by the user
-        NSString *urlString = alert.textFields.firstObject.text;
-        if (urlString.length > 0) {
-            [Tweak downloadFileFromURL:urlString];
-        } else {
-            [Tweak showMessage:@"URL is empty!"];
-        }
-    }];
-    
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil];
-    
-    [alert addAction:uploadAction];
-    [alert addAction:cancelAction];
-    
-    UIWindow *window = [UIApplication sharedApplication].keyWindow;
-    [window.rootViewController presentViewController:alert animated:YES completion:nil];
-}
-
-+ (void)downloadFileFromURL:(NSString *)urlString {
-    NSURL *url = [NSURL URLWithString:urlString];
-    if (!url) {
-        [Tweak showMessage:@"Invalid URL!"];
-        return;
-    }
-    
-    // Start downloading the file from the provided URL
-    NSURLSession *session = [NSURLSession sharedSession];
-    NSURLSessionDataTask *downloadTask = [session dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        if (error) {
-            [Tweak showMessage:@"Failed to download file."];
-            return;
-        }
-        
-        if (data) {
-            NSError *jsonError;
-            NSArray *jsonArray = [NSJSONSerialization JSONObjectWithData:data options:0 error:&jsonError];
-            if (jsonError) {
-                [Tweak showMessage:@"Failed to parse JSON."];
-                return;
-            }
-            
-            [Tweak validateUploadedFile:jsonArray];
-        }
-    }];
-    
-    [downloadTask resume];
-}
-
-+ (void)validateUploadedFile:(NSArray *)fileData {
-    // Validate the file structure and format
-    if (![fileData isKindOfClass:[NSArray class]]) {
-        [Tweak showMessage:@"File format is incorrect!"];
-        return;
-    }
-    
-    // Check if each element in the array contains necessary keys
-    for (NSDictionary *item in fileData) {
-        if (![item isKindOfClass:[NSDictionary class]] || !item[@"name"] || !item[@"bpm"] || !item[@"songNotes"]) {
-            [Tweak showMessage:@"File format is incorrect!"];
-            return;
-        }
-    }
-    
-    // If everything is fine
-    [Tweak showMessage:@"File format is correct!"];
-}
-
-+ (void)showMessage:(NSString *)message {
-    // Show a message to the user
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Upload Status" message:message preferredStyle:UIAlertControllerStyleAlert];
-    
-    UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
-    [alert addAction:okAction];
-    
-    UIWindow *window = [UIApplication sharedApplication].keyWindow;
-    [window.rootViewController presentViewController:alert animated:YES completion:nil];
-}
-
 + (void)handlePan:(UIPanGestureRecognizer *)gesture {
-    UIView *view = gesture.view;
-    CGPoint translation = [gesture translationInView:view.superview];
-    
-    // Move the view (label or button) as the user drags it
-    view.center = CGPointMake(view.center.x + translation.x, view.center.y + translation.y);
-    [gesture setTranslation:CGPointZero inView:view.superview];
+    UIView *label = gesture.view;
+    CGPoint translation = [gesture translationInView:label.superview];
+
+    // Move the label as the user drags it
+    label.center = CGPointMake(label.center.x + translation.x, label.center.y + translation.y);
+    [gesture setTranslation:CGPointZero inView:label.superview];
 }
 
 + (void)handlePinch:(UIPinchGestureRecognizer *)gesture {
-    UIView *view = gesture.view;
-    
-    // Adjust the view's transform to scale it
-    CGAffineTransform currentTransform = view.transform;
+    UIView *label = gesture.view;
+
+    // Adjust the label's transform to scale it
+    CGAffineTransform currentTransform = label.transform;
     CGAffineTransform newTransform = CGAffineTransformScale(currentTransform, gesture.scale, gesture.scale);
-    view.transform = newTransform;
-    
+    label.transform = newTransform;
+
     // Reset the scale for the next pinch event
     gesture.scale = 1.0;
+}
+
+// Implementing the missing startTimedEvents: method
++ (void)startTimedEvents:(NSArray *)songNotes {
+    // Store the song notes for playback
+    songNotesArray = songNotes;
+}
+
+// Action for Start/Stop button
++ (void)startStopButtonPressed:(UIButton *)button {
+    if (isPlaying) {
+        // Stop the playback and reset
+        [timer invalidate];  // Stop the timer
+        timer = nil;  // Reset the timer
+        currentIndex = 0;  // Reset the current index to start from the beginning
+        isPlaying = NO;
+        [button setTitle:@"Start" forState:UIControlStateNormal];  // Change button text to "Start"
+    } else {
+        // Start playing the events from the beginning
+        isPlaying = YES;
+        [button setTitle:@"Stop" forState:UIControlStateNormal];  // Change button text to "Stop"
+
+        // Start a timer to simulate playing the events based on time and key
+        timer = [NSTimer scheduledTimerWithTimeInterval:0.1 target:[Tweak class] selector:@selector(playEvents) userInfo:nil repeats:YES];
+    }
+}
+
+// Simulate playing the events based on the song notes
++ (void)playEvents {
+    if (currentIndex < songNotesArray.count) {
+        NSDictionary *note = songNotesArray[currentIndex];
+        NSNumber *time = note[@"time"];
+        NSString *key = note[@"key"];
+        
+        // Check if the time has passed, then simulate a key press (e.g., by triggering an action)
+        if (CACurrentMediaTime() * 1000 >= time.doubleValue) {
+            NSLog(@"At time: %@, key: %@", time, key);
+            // Trigger key press event here, e.g., visually pressing a key or playing a sound
+            
+            currentIndex++;
+        }
+    } else {
+        // If we reach the end of the song notes, stop the playback
+        [timer invalidate];
+        timer = nil;
+        isPlaying = NO;
+        UIButton *startStopButton = [UIApplication.sharedApplication.windows.firstObject viewWithTag:100];  // Retrieve the Start/Stop button
+        [startStopButton setTitle:@"Start" forState:UIControlStateNormal];  // Change button text back to "Start"
+    }
+}
+
+// Action for Upload button
++ (void)uploadButtonPressed:(UIButton *)button {
+    NSLog(@"Upload button pressed for: %@", button.titleLabel.text);
+    // Handle the upload action (e.g., prompt the user to upload a file)
 }
 
 @end
