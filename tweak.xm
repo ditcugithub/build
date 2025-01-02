@@ -36,7 +36,7 @@ static void initialize() {
             }
         } else {
             // Fallback for older iOS versions (this block is not needed in iOS 15+)
-            // window = UIApplication.sharedApplication.keyWindow;
+            window = UIApplication.sharedApplication.keyWindow;
         }
 
         if (window) {
