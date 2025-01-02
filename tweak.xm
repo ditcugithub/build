@@ -22,9 +22,18 @@ static void initialize() {
 
         // Check if the app supports scenes (iOS 13.0+)
         if (@available(iOS 13.0, *)) {
-            // Access the first connected window scene (ensures compatibility with multiple scenes)
-            UIWindowScene *windowScene = [UIApplication.sharedApplication.connectedScenes allObjects].firstObject;
-            window = windowScene.windows.firstObject;  // Access the first window in the scene
+            // Access the first connected UIWindowScene (ensures compatibility with multiple scenes)
+            UIWindowScene *windowScene = nil;
+            for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+                if ([scene isKindOfClass:[UIWindowScene class]]) {
+                    windowScene = (UIWindowScene *)scene;
+                    break;
+                }
+            }
+            
+            if (windowScene) {
+                window = windowScene.windows.firstObject;  // Access the first window in the scene
+            }
         } else {
             // Fallback for older iOS versions (pre-iOS 13.0)
             window = UIApplication.sharedApplication.keyWindow;  // Deprecated in iOS 13.0+, but still works in older versions
