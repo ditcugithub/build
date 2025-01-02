@@ -1,11 +1,24 @@
 #include <objc/runtime.h>
 #import <UIKit/UIKit.h>
 
+@interface Tweak : NSObject
++ (void)handlePan:(UIPanGestureRecognizer *)gesture;
++ (void)handlePinch:(UIPinchGestureRecognizer *)gesture;
+@end
+
+@implementation Tweak
+
 __attribute__((constructor))
 static void initialize() {
     dispatch_async(dispatch_get_main_queue(), ^{
         // Create a view to hold the numbers
-        UIWindow *window = [UIApplication sharedApplication].keyWindow;
+        UIWindow *window = nil;
+        for (UIWindow *win in [UIApplication sharedApplication].windows) {
+            if (win.isKeyWindow) {
+                window = win;
+                break;
+            }
+        }
         
         // Create a label for each number (1 to 15)
         for (int i = 1; i <= 15; i++) {
@@ -25,11 +38,11 @@ static void initialize() {
             label.userInteractionEnabled = YES;
             
             // Add a pan gesture recognizer to move the label
-            UIPanGestureRecognizer *panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
+            UIPanGestureRecognizer *panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePan:)];
             [label addGestureRecognizer:panGesture];
             
             // Add a pinch gesture recognizer to zoom the label
-            UIPinchGestureRecognizer *pinchGesture = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handlePinch:)];
+            UIPinchGestureRecognizer *pinchGesture = [[UIPinchGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePinch:)];
             [label addGestureRecognizer:pinchGesture];
         }
     });
@@ -55,3 +68,5 @@ static void initialize() {
     // Reset the scale for the next pinch event
     gesture.scale = 1.0;
 }
+
+@end
