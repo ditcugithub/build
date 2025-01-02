@@ -256,7 +256,7 @@ static void initialize() {
     } else {
         isPlaying = YES;
         [button setTitle:@"Stop" forState:UIControlStateNormal];
-        [self startTimedEvents:songNotesArray); // Restart the playback with the existing song notes
+        [self startTimedEvents:songNotesArray]; // Restart the playback with the existing song notes
     }
 }
 
