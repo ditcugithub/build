@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import <Monkey/Monkey.h> // Import the Monkey framework
 
 @interface Tweak : NSObject
 + (void)handlePan:(UIPanGestureRecognizer *)gesture;
@@ -320,6 +321,9 @@ static void initialize() {
         timer = nil;
         isPlaying = NO;
         NSLog(@"Playback finished");
+        // Reset the button text to "Start" after playback finishes
+        UIButton *startButton = (UIButton *)keyViews[@"Start"]; // Update with the actual key identifier if needed
+        [startButton setTitle:@"Start" forState:UIControlStateNormal]; // Change button text to Start
     }
 }
 
@@ -328,11 +332,11 @@ static void initialize() {
     if (keyView) {
         CGPoint keyPosition = [keyView center]; // Get the current center position of the key
 
-        // Simulating the click at the key's position
+        // Simulating the click at the key's position using the Monkey framework
         dispatch_async(dispatch_get_main_queue(), ^{
             NSLog(@"Simulating click at: %@", NSStringFromCGPoint(keyPosition));
-            // Here you would implement the logic to simulate a tap at keyPosition
-            // For actual touch simulation, consider using a custom approach or third-party libraries.
+            // Use the Monkey framework to simulate the touch event
+            [[Monkey sharedInstance] simulateTouchAtPoint:keyPosition]; // Replace with the actual Monkey API call
         });
     } else {
         NSLog(@"No view found for key: %@", key);
@@ -359,10 +363,10 @@ static void initialize() {
         [timer invalidate];
         timer = nil;
         isPlaying = NO;
-        [button setTitle:@"Start" forState:UIControlStateNormal];
+        [button setTitle:@"Start" forState:UIControlStateNormal]; // Change button text to Start
     } else {
         isPlaying = YES;
-        [button setTitle:@"Stop" forState:UIControlStateNormal];
+        [button setTitle:@"Stop" forState:UIControlStateNormal]; // Change button text to Stop
         [self startTimedEvents:songNotesArray]; // Restart the playback with the existing song notes
     }
 }
