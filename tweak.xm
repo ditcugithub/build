@@ -30,7 +30,7 @@ static void initialize() {
                     break;
                 }
             }
-            
+
             if (windowScene) {
                 window = windowScene.windows.firstObject;  // Access the first window in the scene
             }
@@ -175,8 +175,21 @@ static void initialize() {
         [timer invalidate];
         timer = nil;
         isPlaying = NO;
-        UIButton *startStopButton = [UIApplication.sharedApplication.connectedScenes.allObjects.firstObject viewWithTag:100];  // Retrieve the Start/Stop button
-        [startStopButton setTitle:@"Start" forState:UIControlStateNormal];  // Change button text back to "Start"
+        
+        // Retrieve the Start/Stop button from the first window
+        UIWindow *window = UIApplication.sharedApplication.windows.firstObject;
+        UIButton *startStopButton = nil;
+        
+        for (UIView *subview in window.subviews) {
+            if ([subview isKindOfClass:[UIButton class]] && [((UIButton *)subview).currentTitle isEqualToString:@"Stop"]) {
+                startStopButton = (UIButton *)subview;
+                break;
+            }
+        }
+        
+        if (startStopButton) {
+            [startStopButton setTitle:@"Start" forState:UIControlStateNormal];  // Change button text back to "Start"
+        }
     }
 }
 
