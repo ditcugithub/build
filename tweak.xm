@@ -11,39 +11,37 @@
 __attribute__((constructor))
 static void initialize() {
     dispatch_async(dispatch_get_main_queue(), ^{
-        // Create a view to hold the numbers
-        UIWindow *window = nil;
-        for (UIWindow *win in [UIApplication sharedApplication].windows) {
-            if (win.isKeyWindow) {
-                window = win;
-                break;
-            }
-        }
+        // Get the current window scene
+        UIWindowScene *windowScene = (UIWindowScene *)[UIApplication sharedApplication].connectedScenes.allObjects.firstObject;
         
-        // Create a label for each number (1 to 15)
-        for (int i = 1; i <= 15; i++) {
-            UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(50 * (i % 5), 50 * (i / 5), 30, 30)];
-            label.text = [NSString stringWithFormat:@"%d", i];
-            label.font = [UIFont systemFontOfSize:14];
-            label.textAlignment = NSTextAlignmentCenter;
-            label.textColor = [UIColor blackColor];
-            label.backgroundColor = [UIColor lightGrayColor];
-            label.layer.cornerRadius = 15;
-            label.layer.masksToBounds = YES;
+        if (windowScene) {
+            UIWindow *window = windowScene.keyWindow;
             
-            // Add the label to the window
-            [window addSubview:label];
-            
-            // Enable user interaction on the label
-            label.userInteractionEnabled = YES;
-            
-            // Add a pan gesture recognizer to move the label
-            UIPanGestureRecognizer *panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePan:)];
-            [label addGestureRecognizer:panGesture];
-            
-            // Add a pinch gesture recognizer to zoom the label
-            UIPinchGestureRecognizer *pinchGesture = [[UIPinchGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePinch:)];
-            [label addGestureRecognizer:pinchGesture];
+            // Create a label for each number (1 to 15)
+            for (int i = 1; i <= 15; i++) {
+                UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(50 * (i % 5), 50 * (i / 5), 30, 30)];
+                label.text = [NSString stringWithFormat:@"%d", i];
+                label.font = [UIFont systemFontOfSize:14];
+                label.textAlignment = NSTextAlignmentCenter;
+                label.textColor = [UIColor blackColor];
+                label.backgroundColor = [UIColor lightGrayColor];
+                label.layer.cornerRadius = 15;
+                label.layer.masksToBounds = YES;
+                
+                // Add the label to the window
+                [window addSubview:label];
+                
+                // Enable user interaction on the label
+                label.userInteractionEnabled = YES;
+                
+                // Add a pan gesture recognizer to move the label
+                UIPanGestureRecognizer *panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePan:)];
+                [label addGestureRecognizer:panGesture];
+                
+                // Add a pinch gesture recognizer to zoom the label
+                UIPinchGestureRecognizer *pinchGesture = [[UIPinchGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePinch:)];
+                [label addGestureRecognizer:pinchGesture];
+            }
         }
     });
 }
