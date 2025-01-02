@@ -45,7 +45,7 @@ static void initialize() {
             }
 
             if (windowScene) {
-                window = windowScene.windows.firstObject;  // Access the first window in the scene
+                window = windowScene.keyWindow;  // Access the key window in the scene
             }
         } else {
             // Fallback for older iOS versions
@@ -137,7 +137,17 @@ static void initialize() {
     [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     
     // Present the alert
-    UIWindow *window = UIApplication.sharedApplication.windows.firstObject;
+    UIWindow *window = nil;
+    if (@available(iOS 15.0, *)) {
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                window = ((UIWindowScene *)scene).keyWindow; // Get the key window from the window scene
+                break;
+            }
+        }
+    } else {
+        window = UIApplication.sharedApplication.delegate.window; // Use delegate's window for older iOS versions
+    }
     [window.rootViewController presentViewController:alert animated:YES completion:nil];
 }
 
@@ -159,7 +169,17 @@ static void initialize() {
         [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
         
         // Present the alert
-        UIWindow *window = UIApplication.sharedApplication.windows.firstObject;
+        UIWindow *window = nil;
+        if (@available(iOS 15.0, *)) {
+            for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+                if ([scene isKindOfClass:[UIWindowScene class]]) {
+                    window = ((UIWindowScene *)scene).keyWindow; // Get the key window from the window scene
+                    break;
+                }
+            }
+        } else {
+            window = UIApplication.sharedApplication.delegate.window; // Use delegate's window for older iOS versions
+        }
         [window.rootViewController presentViewController:alert animated:YES completion:nil];
     } else {
         NSLog(@"No files found in the sheet directory.");
