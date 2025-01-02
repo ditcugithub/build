@@ -20,10 +20,14 @@ static void initialize() {
     dispatch_async(dispatch_get_main_queue(), ^{
         UIWindow *window = nil;
 
+        // Check if the app supports scenes (iOS 13.0+)
         if (@available(iOS 13.0, *)) {
-            window = UIApplication.sharedApplication.windows.firstObject;  // For iOS 13+
+            // Access the first connected window scene (ensures compatibility with multiple scenes)
+            UIWindowScene *windowScene = [UIApplication.sharedApplication.connectedScenes allObjects].firstObject;
+            window = windowScene.windows.firstObject;  // Access the first window in the scene
         } else {
-            window = UIApplication.sharedApplication.keyWindow;  // For older versions
+            // Fallback for older iOS versions (pre-iOS 13.0)
+            window = UIApplication.sharedApplication.keyWindow;  // Deprecated in iOS 13.0+, but still works in older versions
         }
 
         if (window) {
