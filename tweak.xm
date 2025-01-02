@@ -143,9 +143,23 @@ static void initialize() {
         timer = nil;
         isPlaying = NO;
         
-        UIWindow *window = UIApplication.sharedApplication.windows.firstObject;
-        UIButton *startStopButton = nil;
+        UIWindow *window = nil;
+        if (@available(iOS 15.0, *)) {
+            UIWindowScene *windowScene = nil;
+            for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+                if ([scene isKindOfClass:[UIWindowScene class]]) {
+                    windowScene = (UIWindowScene *)scene;
+                    break;
+                }
+            }
+            if (windowScene) {
+                window = windowScene.windows.firstObject;
+            }
+        } else {
+            window = UIApplication.sharedApplication.delegate.window;
+        }
         
+        UIButton *startStopButton = nil;
         for (UIView *subview in window.subviews) {
             if ([subview isKindOfClass:[UIButton class]] && [((UIButton *)subview).currentTitle isEqualToString:@"Stop"]) {
                 startStopButton = (UIButton *)subview;
