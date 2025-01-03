@@ -1,140 +1,177 @@
-#include <UIKit/UIKit.h>
-#include <Foundation/Foundation.h>
-#include <objc/runtime.h>
-#include <objc/message.h>
-#include <IOKit/IOKitLib.h>
-#include <sys/sysctl.h>
-#include <stdlib.h>
-#include <unistd.h>
+#import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
 
-@interface KeyInputViewController : UIViewController
-@property (nonatomic, strong) UITextField *keyTextField;
-@property (nonatomic, strong) UIButton *submitButton;
-@property (nonatomic, strong) UIButton *menuButton;
-@property (nonatomic, strong) UILabel *countdownLabel;
-@property (nonatomic, assign) NSInteger countdown;
+// Utility function to get HWID
+NSString *getHWID() {
+    return [[[UIDevice currentDevice] identifierForVendor] UUIDString];
+}
+
+// KeyValidator Class
+@interface KeyValidator : NSObject
+- (void)startValidation;
+- (void)showMenu;
 @end
 
-@implementation KeyInputViewController
+@implementation KeyValidator {
+    UIWindow *keyWindow;
+    UIView *keyInputView;
+    UITextField *keyField;
+    UIButton *menuButton;
+    NSInteger countdown;
+    NSTimer *countdownTimer;
+    UIView *menuView;
+}
 
-- (void)viewDidLoad {
-    [super viewDidLoad];
-    
-    self.view.backgroundColor = [UIColor whiteColor];
-    
-    // Key input field
-    self.keyTextField = [[UITextField alloc] initWithFrame:CGRectMake(50, 100, 300, 40)];
-    self.keyTextField.placeholder = @"Enter key";
-    self.keyTextField.borderStyle = UITextBorderStyleRoundedRect;
-    [self.view addSubview:self.keyTextField];
-    
-    // Submit button
-    self.submitButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.submitButton.frame = CGRectMake(50, 150, 300, 40);
-    [self.submitButton setTitle:@"Submit" forState:UIControlStateNormal];
-    [self.submitButton addTarget:self action:@selector(submitKey) forControlEvents:UIControlEventTouchUpInside];
-    [self.view addSubview:self.submitButton];
-    
-    // Countdown Label
-    self.countdownLabel = [[UILabel alloc] initWithFrame:CGRectMake(50, 200, 300, 40)];
-    self.countdownLabel.text = @"Time remaining: 90s";
-    self.countdownLabel.textColor = [UIColor redColor];
-    [self.view addSubview:self.countdownLabel];
-    
-    // Countdown Timer
-    self.countdown = 90;
-    [NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(updateCountdown) userInfo:nil repeats:YES];
-    
-    // Menu Button (Hidden initially)
-    self.menuButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.menuButton.frame = CGRectMake(50, 300, 100, 40);
-    [self.menuButton setTitle:@"Menu" forState:UIControlStateNormal];
-    [self.menuButton addTarget:self action:@selector(showMenu) forControlEvents:UIControlEventTouchUpInside];
-    self.menuButton.hidden = YES;
-    [self.view addSubview:self.menuButton];
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        countdown = 90; // Set the countdown timer to 90 seconds
+    }
+    return self;
+}
+
+- (void)startValidation {
+    // Ensure all UI operations are performed on the main thread
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSString *savedKey = [[NSUserDefaults standardUserDefaults] stringForKey:@"savedKey"];
+        if (savedKey) {
+            [self validateKey:savedKey];
+        } else {
+            [self showKeyInputDialog];
+        }
+    });
+}
+
+- (void)showKeyInputDialog {
+    // Create a new UIWindow
+    keyWindow = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+    keyWindow.backgroundColor = [UIColor colorWithWhite:0 alpha:0.7];
+    keyWindow.windowLevel = UIWindowLevelAlert + 1;
+
+    // Create the main view for the key input dialog
+    keyInputView = [[UIView alloc] initWithFrame:CGRectMake(50, 200, keyWindow.frame.size.width - 100, 200)];
+    keyInputView.backgroundColor = [UIColor whiteColor];
+    keyInputView.layer.cornerRadius = 10;
+
+    // Create the key input field
+    keyField = [[UITextField alloc] initWithFrame:CGRectMake(20, 50, keyInputView.frame.size.width - 40, 40)];
+    keyField.placeholder = @"Enter your key";
+    keyField.borderStyle = UITextBorderStyleRoundedRect;
+    keyField.textAlignment = NSTextAlignmentCenter;
+    [keyInputView addSubview:keyField];
+
+    // Create the submit button
+    UIButton *submitButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    submitButton.frame = CGRectMake((keyInputView.frame.size.width - 100) / 2, 120, 100, 40);
+    [submitButton setTitle:@"Submit" forState:UIControlStateNormal];
+    [submitButton addTarget:self action:@selector(submitKey) forControlEvents:UIControlEventTouchUpInside];
+    [keyInputView addSubview:submitButton];
+
+    [keyWindow addSubview:keyInputView];
+    [keyWindow makeKeyAndVisible];
 }
 
 - (void)submitKey {
-    NSString *key = self.keyTextField.text;
-    NSString *hwid = [self getHwid];  // Get the HWID here
-    
+    NSString *key = keyField.text;
+    if (key.length == 0) {
+        return;
+    }
+    [self validateKey:key];
+}
+
+- (void)validateKey:(NSString *)key {
+    NSString *hwid = getHWID();
     NSString *urlString = [NSString stringWithFormat:@"https://chillysilly.frfrnocap.men/checkkey.php?key=%@&hwid=%@", key, hwid];
     NSURL *url = [NSURL URLWithString:urlString];
-    NSURLRequest *request = [NSURLRequest requestWithURL:url];
-    
-    NSURLSessionDataTask *dataTask = [[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error) {
-            NSLog(@"Error: %@", error);
+            NSLog(@"Validation Error: %@", error.localizedDescription);
             return;
         }
-        
-        NSDictionary *responseDict = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-        if ([responseDict[@"status"] isEqualToString:@"success"]) {
+
+        NSDictionary *result = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+        NSString *status = result[@"status"];
+        if ([status isEqualToString:@"success"]) {
+            [[NSUserDefaults standardUserDefaults] setObject:key forKey:@"savedKey"];
+            [[NSUserDefaults standardUserDefaults] synchronize];
             dispatch_async(dispatch_get_main_queue(), ^{
-                // Key is valid, close input and show menu
-                self.keyTextField.hidden = YES;
-                self.submitButton.hidden = YES;
-                self.countdownLabel.hidden = YES;
-                self.menuButton.hidden = NO;
+                [keyWindow resignKeyWindow];
+                keyWindow = nil;
+                [self showMenu];
             });
         } else {
             dispatch_async(dispatch_get_main_queue(), ^{
-                // Key is invalid, show alert
-                UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Invalid Key" message:@"The key is invalid or already linked to another HWID." preferredStyle:UIAlertControllerStyleAlert];
-                [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
-                [self presentViewController:alert animated:YES completion:nil];
+                keyField.text = @"";
+                keyField.placeholder = @"Invalid key. Try again.";
             });
         }
     }];
-    [dataTask resume];
-}
-
-- (NSString *)getHwid {
-    // Retrieve HWID from IORegistry (this is the device's UUID)
-    io_registry_entry_t entry = IORegistryEntryFromPath(kIOMasterPortDefault, "IOService:/");
-    CFStringRef uuid = IORegistryEntryCreateCFProperty(entry, CFSTR(kIOPlatformUUIDKey), kCFAllocatorDefault, 0);
-    
-    // Convert UUID to NSString
-    NSString *hwid = (__bridge NSString *)uuid;
-    
-    return hwid ? hwid : @"unknown";
-}
-
-- (void)updateCountdown {
-    self.countdown--;
-    self.countdownLabel.text = [NSString stringWithFormat:@"Time remaining: %lds", (long)self.countdown];
-    
-    if (self.countdown <= 0) {
-        // Timeout, close the app
-        exit(0);
-    }
+    [task resume];
 }
 
 - (void)showMenu {
-    UIAlertController *menuAlert = [UIAlertController alertControllerWithTitle:@"Menu" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
-    
-    [menuAlert addAction:[UIAlertAction actionWithTitle:@"Download" style:UIAlertActionStyleDefault handler:nil]];
-    [menuAlert addAction:[UIAlertAction actionWithTitle:@"Upload" style:UIAlertActionStyleDefault handler:nil]];
-    [menuAlert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-    
-    [self presentViewController:menuAlert animated:YES completion:nil];
+    // Create a movable button
+    menuButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    menuButton.frame = CGRectMake(50, 150, 100, 40);
+    [menuButton setTitle:@"Menu" forState:UIControlStateNormal];
+    [menuButton addTarget:self action:@selector(toggleMenu) forControlEvents:UIControlEventTouchUpInside];
+
+    // Add the button to the keyWindow
+    [keyWindow addSubview:menuButton];
 }
 
+- (void)toggleMenu {
+    // Create a menu view
+    if (menuView == nil) {
+        menuView = [[UIView alloc] initWithFrame:CGRectMake(50, 200, 200, 150)];
+        menuView.backgroundColor = [UIColor whiteColor];
+        menuView.layer.cornerRadius = 10;
+        menuView.layer.shadowOpacity = 0.3;
+        menuView.layer.shadowOffset = CGSizeMake(2, 2);
+
+        // Create buttons for "Download", "Upload", "Cancel"
+        UIButton *downloadButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        downloadButton.frame = CGRectMake(20, 20, 160, 40);
+        [downloadButton setTitle:@"Download" forState:UIControlStateNormal];
+        [downloadButton addTarget:self action:@selector(downloadAction) forControlEvents:UIControlEventTouchUpInside];
+        [menuView addSubview:downloadButton];
+
+        UIButton *uploadButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        uploadButton.frame = CGRectMake(20, 70, 160, 40);
+        [uploadButton setTitle:@"Upload" forState:UIControlStateNormal];
+        [uploadButton addTarget:self action:@selector(uploadAction) forControlEvents:UIControlEventTouchUpInside];
+        [menuView addSubview:uploadButton];
+
+        UIButton *cancelButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        cancelButton.frame = CGRectMake(20, 120, 160, 40);
+        [cancelButton setTitle:@"Cancel" forState:UIControlStateNormal];
+        [cancelButton addTarget:self action:@selector(cancelAction) forControlEvents:UIControlEventTouchUpInside];
+        [menuView addSubview:cancelButton];
+
+        [keyWindow addSubview:menuView];
+    } else {
+        menuView.hidden = !menuView.hidden;
+    }
+}
+
+- (void)downloadAction {
+    NSLog(@"Download button pressed");
+    // Add download action logic here
+}
+
+- (void)uploadAction {
+    NSLog(@"Upload button pressed");
+    // Add upload action logic here
+}
+
+- (void)cancelAction {
+    NSLog(@"Cancel button pressed");
+    // Add cancel action logic here
+}
 @end
 
-%ctor {
-    Class keyInputVCClass = objc_allocateClassPair([UIViewController class], "KeyInputViewController", 0);
-    class_addMethod(keyInputVCClass, @selector(viewDidLoad), (IMP)keyInputViewController_viewDidLoad, "v@:");
-    objc_registerClassPair(keyInputVCClass);
-
-    id keyInputVC = [[keyInputVCClass alloc] init];
-    UIApplication *app = [UIApplication sharedApplication];
-    if (@available(iOS 15.0, *)) {
-        UIWindowScene *windowScene = (UIWindowScene *)app.connectedScenes.allObjects.firstObject;
-        UIWindow *window = windowScene.windows.firstObject;
-        [window setRootViewController:keyInputVC];
-    } else {
-        UIWindow *window = app.keyWindow;
-        [window setRootViewController:keyInputVC];
-    }
+__attribute__((constructor))
+static void initialize() {
+    KeyValidator *validator = [[KeyValidator alloc] init];
+    [validator startValidation];
 }
