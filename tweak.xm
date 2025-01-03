@@ -1,5 +1,5 @@
 #import <UIKit/UIKit.h>
-#import <Monkey/Monkey.h> // Import the Monkey framework
+#import <KIF/KIF.h> // Import KIF framework
 
 @interface Tweak : NSObject
 + (void)handlePan:(UIPanGestureRecognizer *)gesture;
@@ -80,9 +80,6 @@ static void initialize() {
             uploadButton.frame = CGRectMake(20, 100, 80, 50);
             [uploadButton setTitle:@"Upload" forState:UIControlStateNormal];
             [uploadButton addTarget:[Tweak class] action:@selector(uploadButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
-            uploadButton.userInteractionEnabled = YES;
-            UIPanGestureRecognizer *uploadPanGesture = [[UIPanGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePan:)];
-            [uploadButton addGestureRecognizer:uploadPanGesture];
             [window addSubview:uploadButton];
 
             // Load Button
@@ -90,9 +87,6 @@ static void initialize() {
             loadButton.frame = CGRectMake(120, 100, 80, 50);
             [loadButton setTitle:@"Load" forState:UIControlStateNormal];
             [loadButton addTarget:[Tweak class] action:@selector(loadButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
-            loadButton.userInteractionEnabled = YES;
-            UIPanGestureRecognizer *loadPanGesture = [[UIPanGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePan:)];
-            [loadButton addGestureRecognizer:loadPanGesture];
             [window addSubview:loadButton];
 
             // Delete Button
@@ -100,9 +94,6 @@ static void initialize() {
             deleteButton.frame = CGRectMake(220, 100, 80, 50);
             [deleteButton setTitle:@"Delete" forState:UIControlStateNormal];
             [deleteButton addTarget:[Tweak class] action:@selector(deleteButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
-            deleteButton.userInteractionEnabled = YES;
-            UIPanGestureRecognizer *deletePanGesture = [[UIPanGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePan:)];
-            [deleteButton addGestureRecognizer:deletePanGesture];
             [window addSubview:deleteButton];
 
             // Start Button
@@ -110,9 +101,6 @@ static void initialize() {
             startButton.frame = CGRectMake(320, 100, 80, 50);
             [startButton setTitle:@"Start" forState:UIControlStateNormal];
             [startButton addTarget:[Tweak class] action:@selector(startStopButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
-            startButton.userInteractionEnabled = YES;
-            UIPanGestureRecognizer *startPanGesture = [[UIPanGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePan:)];
-            [startButton addGestureRecognizer:startPanGesture];
             [window addSubview:startButton];
         }
     });
@@ -195,108 +183,6 @@ static void initialize() {
     [window.rootViewController presentViewController:alert animated:YES completion:nil];
 }
 
-+ (void)loadButtonPressed:(UIButton *)button {
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSArray *files = [fileManager contentsOfDirectoryAtPath:sheetDirectory error:nil];
-
-    if (files.count > 0) {
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Load File"
-                                                                       message:@"Select a file to set as main:"
-                                                                preferredStyle:UIAlertControllerStyleAlert];
-        
-        for (NSString *file in files) {
-            UIAlertAction *fileAction = [UIAlertAction actionWithTitle:file style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-                // Set the selected file as the main file
-                mainFile = file;
-                NSLog(@"Main file set to: %@", mainFile);
-            }];
-            [alert addAction:fileAction];
-        }
-        [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-        
-        // Present the alert
-        UIWindow *window = nil;
-        if (@available(iOS 15.0, *)) {
-            for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-                if ([scene isKindOfClass:[UIWindowScene class]]) {
-                    window = ((UIWindowScene *)scene).keyWindow; // Get the key window from the window scene
-                    break;
-                }
-            }
-        } else {
-            window = UIApplication.sharedApplication.delegate.window; // Use delegate's window for older iOS versions
-        }
-        [window.rootViewController presentViewController:alert animated:YES completion:nil];
-    } else {
-        NSLog(@"No files found in the sheet directory.");
-    }
-}
-
-+ (void)deleteButtonPressed:(UIButton *)button {
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSArray *files = [fileManager contentsOfDirectoryAtPath:sheetDirectory error:nil];
-
-    if (files.count > 0) {
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Delete File"
-                                                                       message:@"Select a file to delete:"
-                                                                preferredStyle:UIAlertControllerStyleAlert];
-        
-        for (NSString *file in files) {
-            UIAlertAction *fileAction = [UIAlertAction actionWithTitle:file style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
-                // Delete the selected file
-                NSString *filePath = [sheetDirectory stringByAppendingPathComponent:file];
-                NSError *error = nil;
-                if ([fileManager removeItemAtPath:filePath error:&error]) {
-                    NSLog(@"File deleted: %@", file);
-                } else {
-                    NSLog(@"Failed to delete file: %@", error.localizedDescription);
-                }
-            }];
-            [alert addAction:fileAction];
-        }
-        [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-        
-        // Present the alert
-        UIWindow *window = nil;
-        if (@available(iOS 15.0, *)) {
-            for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-                if ([scene isKindOfClass:[UIWindowScene class]]) {
-                    window = ((UIWindowScene *)scene).keyWindow; // Get the key window from the window scene
-                    break;
-                }
-            }
-        } else {
-            window = UIApplication.sharedApplication.delegate.window; // Use delegate's window for older iOS versions
-        }
-        [window.rootViewController presentViewController:alert animated:YES completion:nil];
-    } else {
-        NSLog(@"No files found in the sheet directory.");
-    }
-}
-
-+ (void)loadFile:(NSString *)fileName {
-    NSString *filePath = [sheetDirectory stringByAppendingPathComponent:fileName];
-    
-    NSError *error = nil;
-    NSData *data = [NSData dataWithContentsOfFile:filePath options:0 error:&error];
-    
-    if (error) {
-        NSLog(@"Error reading file: %@", error.localizedDescription);
-        return;
-    }
-    
-    NSError *jsonError = nil;
-    NSDictionary *jsonDict = [NSJSONSerialization JSONObjectWithData:data options:0 error:&jsonError];
-    
-    if (jsonError) {
-        NSLog(@"JSON parsing error: %@", jsonError.localizedDescription);
-        return;
-    }
-    
-    NSArray *songNotes = jsonDict[@"songNotes"];
-    [self startTimedEvents:songNotes];
-}
-
 + (void)startTimedEvents:(NSArray *)songNotes {
     songNotesArray = songNotes;
     currentIndex = 0; // Reset index for new song notes
@@ -321,9 +207,6 @@ static void initialize() {
         timer = nil;
         isPlaying = NO;
         NSLog(@"Playback finished");
-        // Reset the button text to "Start" after playback finishes
-        UIButton *startButton = (UIButton *)keyViews[@"Start"]; // Update with the actual key identifier if needed
-        [startButton setTitle:@"Start" forState:UIControlStateNormal]; // Change button text to Start
     }
 }
 
@@ -332,11 +215,13 @@ static void initialize() {
     if (keyView) {
         CGPoint keyPosition = [keyView center]; // Get the current center position of the key
 
-        // Simulating the click at the key's position using the Monkey framework
+        // Simulating the click at the key's position using KIF
         dispatch_async(dispatch_get_main_queue(), ^{
             NSLog(@"Simulating click at: %@", NSStringFromCGPoint(keyPosition));
-            // Use the Monkey framework to simulate the touch event
-            [[Monkey sharedInstance] simulateTouchAtPoint:keyPosition]; // Replace with the actual Monkey API call
+
+            // Here KIF is used to simulate the tap
+            KIFTestActor *actor = [[KIFTestActor alloc] initWithHostApp:nil];
+            [actor tapViewWithAccessibilityLabel:key];
         });
     } else {
         NSLog(@"No view found for key: %@", key);
@@ -350,11 +235,6 @@ static void initialize() {
     // Update the position of the key or button
     movableView.center = CGPointMake(movableView.center.x + translation.x, movableView.center.y + translation.y);
     [gesture setTranslation:CGPointZero inView:movableView.superview];
-}
-
-+ (void)handlePinch:(UIPinchGestureRecognizer *)gesture {
-    // This method can be implemented if you want pinch-to-zoom functionality
-    // Currently, it is empty as no functionality was specified
 }
 
 + (void)startStopButtonPressed:(UIButton *)button {
