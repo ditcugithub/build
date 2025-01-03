@@ -43,8 +43,8 @@ jobs:
             echo "end" >> Podfile
           fi
 
-          # Install pods
-          pod install --repo-update || true
+          # Install pods without requiring an Xcode project
+          pod install --no-integrate --repo-update || true
 
       - name: Find Makefile and .xm files
         id: find_files
