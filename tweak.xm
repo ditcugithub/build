@@ -1,5 +1,4 @@
 #import <UIKit/UIKit.h>
-#import <KIF/KIF.h> // Import KIF framework
 
 @interface Tweak : NSObject
 + (void)handlePan:(UIPanGestureRecognizer *)gesture;
@@ -215,13 +214,19 @@ static void initialize() {
     if (keyView) {
         CGPoint keyPosition = [keyView center]; // Get the current center position of the key
 
-        // Simulating the click at the key's position using KIF
+        // Use Accessibility API to simulate a tap
         dispatch_async(dispatch_get_main_queue(), ^{
             NSLog(@"Simulating click at: %@", NSStringFromCGPoint(keyPosition));
 
-            // Here KIF is used to simulate the tap
-            KIFTestActor *actor = [[KIFTestActor alloc] initWithHostApp:nil];
-            [actor tapViewWithAccessibilityLabel:key];
+            // Create an accessibility element for the key
+            UIAccessibilityElement *element = [[UIAccessibilityElement alloc] initWithAccessibilityContainer:keyView];
+            element.accessibilityLabel = key;
+            element.accessibilityTraits = UIAccessibilityTraitButton;  // Mark it as a button
+            [UIAccessibility postNotification:UIAccessibilityAnnouncementNotification
+                                        argument:[NSString stringWithFormat:@"Tapping on %@", key]];
+
+            // Simulate the interaction
+            UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, nil);
         });
     } else {
         NSLog(@"No view found for key: %@", key);
