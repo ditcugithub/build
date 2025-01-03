@@ -10,6 +10,7 @@
 + (void)deleteButtonPressed:(UIButton *)button;
 + (void)startStopButtonPressed:(UIButton *)button;
 + (void)stopPlayback;
++ (void)simulateKeypress:(NSString *)key;
 @end
 
 @implementation Tweak
@@ -23,6 +24,7 @@ static NSMutableDictionary<NSString *, UIView *> *keyViews;
 static NSString *mainFile;
 static AVSpeechSynthesizer *synthesizer;
 static double startTime;
+static NSMutableArray *keyPressTimers;
 
 
 __attribute__((constructor))
@@ -36,6 +38,7 @@ static void initialize() {
     
     keyViews = [NSMutableDictionary dictionary];
     synthesizer = [[AVSpeechSynthesizer alloc] init];
+    keyPressTimers = [NSMutableArray array];
 
     dispatch_async(dispatch_get_main_queue(), ^{
         for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
@@ -104,6 +107,7 @@ static void initialize() {
                                                                                   message:@"Enter the name for the downloaded file:"
                                                                            preferredStyle:UIAlertControllerStyleAlert];
             [fileNameAlert addTextFieldWithConfigurationHandler:nil];
+
             UIAlertAction *downloadAction = [UIAlertAction actionWithTitle:@"Download" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
                 NSString *fileName = fileNameAlert.textFields[0].text;
                 if (fileName.length > 0) {
@@ -121,6 +125,7 @@ static void initialize() {
                     NSLog(@"Invalid file name");
                 }
             }];
+            
             [fileNameAlert addAction:downloadAction];
             [fileNameAlert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
             
@@ -135,10 +140,12 @@ static void initialize() {
                     break;
                 }
             }
+            
         } else {
             NSLog(@"Invalid URL");
         }
     }];
+    
     [alert addAction:submitAction];
     [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     
@@ -282,7 +289,7 @@ static void initialize() {
             if (timeMs && key) {
                 double elapsedTimeMs = CACurrentMediaTime() * 1000 - startTime;
                 if (elapsedTimeMs >= timeMs.doubleValue) {
-                    [self simulateClickForKey:key];
+                    [self simulateKeypress:key];
                     currentIndex++;
                     AVSpeechUtterance *utterance = [AVSpeechUtterance speechUtteranceWithString:key];
                     [synthesizer speakUtterance:utterance];
@@ -300,14 +307,26 @@ static void initialize() {
     }
 }
 
-+ (void)simulateClickForKey:(NSString *)key {
++ (void)simulateKeypress:(NSString *)key {
     UIView *keyView = keyViews[key];
     if (keyView && keyView.window) {
-        [keyView accessibilityActivate];
+        [self highlightKey:keyView];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [self unhighlightKey:keyView];
+        });
     } else {
         NSLog(@"Warning: Key view not found for key: %@", key);
     }
 }
+
++ (void)highlightKey:(UIView *)keyView {
+    keyView.backgroundColor = [UIColor redColor]; 
+}
+
++ (void)unhighlightKey:(UIView *)keyView {
+    keyView.backgroundColor = [UIColor lightGrayColor]; 
+}
+
 
 + (void)stopPlayback {
     [timer invalidate];
@@ -315,6 +334,10 @@ static void initialize() {
     isPlaying = NO;
     NSLog(@"Playback stopped");
     [synthesizer stopSpeakingAtBoundary:AVSpeechBoundaryImmediate];
+    for (NSTimer *t in keyPressTimers) {
+        [t invalidate];
+    }
+    [keyPressTimers removeAllObjects];
 }
 
 + (void)startStopButtonPressed:(UIButton *)button {
