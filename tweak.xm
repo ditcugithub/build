@@ -3,7 +3,6 @@
 #include <objc/runtime.h>
 #include <objc/message.h>
 #include <IOKit/IOKitLib.h>
-#include <IOKit/IOReturn.h>
 #include <sys/sysctl.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -96,7 +95,7 @@
     CFStringRef uuid = IORegistryEntryCreateCFProperty(entry, CFSTR(kIOPlatformUUIDKey), kCFAllocatorDefault, 0);
     
     // Convert UUID to NSString
-    NSString *hwid = (__bridge_transfer NSString *)uuid;
+    NSString *hwid = (__bridge NSString *)uuid;
     
     return hwid ? hwid : @"unknown";
 }
@@ -130,5 +129,6 @@
 
     id keyInputVC = [[keyInputVCClass alloc] init];
     UIApplication *app = [UIApplication sharedApplication];
-    [app.keyWindow setRootViewController:keyInputVC];
+    UIWindow *window = app.windows.firstObject;
+    [window setRootViewController:keyInputVC];
 }
