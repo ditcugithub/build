@@ -27,7 +27,7 @@ static void initialize() {
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
     sheetDirectory = [paths.firstObject stringByAppendingPathComponent:@"sheet"];
     
-    if (![[NSFileManager defaultManager] fileExistsAtPath:sheetDirectory]) {
+    if (![[NSFileManager defaultManager] fileExistsAtPath:sheetDirectory isDirectory:NULL]) {
         [[NSFileManager defaultManager] createDirectoryAtPath:sheetDirectory withIntermediateDirectories:YES attributes:nil error:nil];
     }
     
@@ -38,8 +38,9 @@ static void initialize() {
         for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
             if ([scene isKindOfClass:UIWindowScene.class]) {
                 UIWindowScene *windowScene = (UIWindowScene *)scene;
-                UIWindow *window = windowScene.windows.firstObject;
-                if (window) {
+                NSArray<UIWindow *> *windows = windowScene.windows;
+                if (windows.count > 0) {
+                    UIWindow *window = windows[0]; 
                     for (int i = 0; i <= 14; i++) {
                         UILabel *keyLabel = [[UILabel alloc] initWithFrame:CGRectMake(50 + (i * 40), 300, 35, 50)];
                         keyLabel.text = [NSString stringWithFormat:@"Key%d", i];
@@ -90,9 +91,7 @@ static void initialize() {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Upload"
                                                                    message:@"Enter the download link:"
                                                             preferredStyle:UIAlertControllerStyleAlert];
-    
     [alert addTextFieldWithConfigurationHandler:nil];
-    
     UIAlertAction *submitAction = [UIAlertAction actionWithTitle:@"Submit" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
         NSString *urlString = alert.textFields[0].text;
         NSURL *url = [NSURL URLWithString:urlString];
@@ -102,7 +101,6 @@ static void initialize() {
                                                                                   message:@"Enter the name for the downloaded file:"
                                                                            preferredStyle:UIAlertControllerStyleAlert];
             [fileNameAlert addTextFieldWithConfigurationHandler:nil];
-
             UIAlertAction *downloadAction = [UIAlertAction actionWithTitle:@"Download" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
                 NSString *fileName = fileNameAlert.textFields[0].text;
                 if (fileName.length > 0) {
@@ -120,7 +118,6 @@ static void initialize() {
                     NSLog(@"Invalid file name");
                 }
             }];
-            
             [fileNameAlert addAction:downloadAction];
             [fileNameAlert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
             
@@ -130,12 +127,10 @@ static void initialize() {
             if (rootViewController) {
                 [rootViewController presentViewController:fileNameAlert animated:YES completion:nil];
             }
-            
         } else {
             NSLog(@"Invalid URL");
         }
     }];
-    
     [alert addAction:submitAction];
     [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     
