@@ -1,142 +1,134 @@
-#import <UIKit/UIKit.h>
-#import <Foundation/Foundation.h>
+#include <UIKit/UIKit.h>
+#include <Foundation/Foundation.h>
+#include <objc/runtime.h>
+#include <objc/message.h>
+#include <IOKit/IOKitLib.h>
+#include <IOKit/IOReturn.h>
+#include <sys/sysctl.h>
+#include <stdlib.h>
+#include <unistd.h>
 
-// Utility function to get HWID
-NSString *getHWID() {
-    return [[[UIDevice currentDevice] identifierForVendor] UUIDString];
-}
-
-// KeyValidator Class
-@interface KeyValidator : NSObject
-- (void)startValidation;
+@interface KeyInputViewController : UIViewController
+@property (nonatomic, strong) UITextField *keyTextField;
+@property (nonatomic, strong) UIButton *submitButton;
+@property (nonatomic, strong) UIButton *menuButton;
+@property (nonatomic, strong) UILabel *countdownLabel;
+@property (nonatomic, assign) NSInteger countdown;
 @end
 
-@implementation KeyValidator {
-    UIWindow *keyWindow;
-    UIView *keyInputView;
-    UITextField *keyField;
-    UILabel *countdownLabel;
-    UIButton *submitButton;
-    NSInteger countdown;
-    NSTimer *countdownTimer;
-}
+@implementation KeyInputViewController
 
-- (instancetype)init {
-    self = [super init];
-    if (self) {
-        countdown = 90; // Set the countdown timer to 90 seconds
-    }
-    return self;
-}
-
-- (void)startValidation {
-    // Ensure all UI operations are performed on the main thread
-    dispatch_async(dispatch_get_main_queue(), ^{
-        NSString *savedKey = [[NSUserDefaults standardUserDefaults] stringForKey:@"savedKey"];
-        if (savedKey) {
-            [self validateKey:savedKey];
-        } else {
-            [self showKeyInputDialog];
-        }
-    });
-}
-
-- (void)showKeyInputDialog {
-    // Create a new UIWindow
-    keyWindow = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-    keyWindow.backgroundColor = [UIColor colorWithWhite:0 alpha:0.7];
-    keyWindow.windowLevel = UIWindowLevelAlert + 1;
-
-    // Create the main view for the key input dialog
-    keyInputView = [[UIView alloc] initWithFrame:CGRectMake(50, 200, keyWindow.frame.size.width - 100, 200)];
-    keyInputView.backgroundColor = [UIColor whiteColor];
-    keyInputView.layer.cornerRadius = 10;
-
-    // Create the key input field
-    keyField = [[UITextField alloc] initWithFrame:CGRectMake(20, 50, keyInputView.frame.size.width - 40, 40)];
-    keyField.placeholder = @"Enter your key";
-    keyField.borderStyle = UITextBorderStyleRoundedRect;
-    keyField.textAlignment = NSTextAlignmentCenter;
-    [keyInputView addSubview:keyField];
-
-    // Create the countdown label
-    countdownLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, 100, keyInputView.frame.size.width - 40, 30)];
-    countdownLabel.text = [NSString stringWithFormat:@"Time remaining: %ld seconds", (long)countdown];
-    countdownLabel.textAlignment = NSTextAlignmentCenter;
-    countdownLabel.font = [UIFont systemFontOfSize:14];
-    [keyInputView addSubview:countdownLabel];
-
-    // Create the submit button
-    submitButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    submitButton.frame = CGRectMake((keyInputView.frame.size.width - 100) / 2, 140, 100, 40);
-    [submitButton setTitle:@"Submit" forState:UIControlStateNormal];
-    [submitButton addTarget:self action:@selector(submitKey) forControlEvents:UIControlEventTouchUpInside];
-    [keyInputView addSubview:submitButton];
-
-    [keyWindow addSubview:keyInputView];
-    [keyWindow makeKeyAndVisible];
-
-    // Start the countdown timer
-    countdownTimer = [NSTimer scheduledTimerWithTimeInterval:1.0
-                                                      target:self
-                                                    selector:@selector(updateCountdown)
-                                                    userInfo:nil
-                                                     repeats:YES];
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    self.view.backgroundColor = [UIColor whiteColor];
+    
+    // Key input field
+    self.keyTextField = [[UITextField alloc] initWithFrame:CGRectMake(50, 100, 300, 40)];
+    self.keyTextField.placeholder = @"Enter key";
+    self.keyTextField.borderStyle = UITextBorderStyleRoundedRect;
+    [self.view addSubview:self.keyTextField];
+    
+    // Submit button
+    self.submitButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.submitButton.frame = CGRectMake(50, 150, 300, 40);
+    [self.submitButton setTitle:@"Submit" forState:UIControlStateNormal];
+    [self.submitButton addTarget:self action:@selector(submitKey) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:self.submitButton];
+    
+    // Countdown Label
+    self.countdownLabel = [[UILabel alloc] initWithFrame:CGRectMake(50, 200, 300, 40)];
+    self.countdownLabel.text = @"Time remaining: 90s";
+    self.countdownLabel.textColor = [UIColor redColor];
+    [self.view addSubview:self.countdownLabel];
+    
+    // Countdown Timer
+    self.countdown = 90;
+    [NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(updateCountdown) userInfo:nil repeats:YES];
+    
+    // Menu Button (Hidden initially)
+    self.menuButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.menuButton.frame = CGRectMake(50, 300, 100, 40);
+    [self.menuButton setTitle:@"Menu" forState:UIControlStateNormal];
+    [self.menuButton addTarget:self action:@selector(showMenu) forControlEvents:UIControlEventTouchUpInside];
+    self.menuButton.hidden = YES;
+    [self.view addSubview:self.menuButton];
 }
 
 - (void)submitKey {
-    NSString *key = keyField.text;
-    if (key.length == 0) {
-        return;
-    }
-    [self validateKey:key];
-}
-
-- (void)validateKey:(NSString *)key {
-    NSString *hwid = getHWID();
+    NSString *key = self.keyTextField.text;
+    NSString *hwid = [self getHwid];  // Get the HWID here
+    
     NSString *urlString = [NSString stringWithFormat:@"https://chillysilly.frfrnocap.men/checkkey.php?key=%@&hwid=%@", key, hwid];
     NSURL *url = [NSURL URLWithString:urlString];
-    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+    NSURLRequest *request = [NSURLRequest requestWithURL:url];
+    
+    NSURLSessionDataTask *dataTask = [[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error) {
-            NSLog(@"Validation Error: %@", error.localizedDescription);
+            NSLog(@"Error: %@", error);
             return;
         }
-
-        NSDictionary *result = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-        NSString *status = result[@"status"];
-        if ([status isEqualToString:@"success"]) {
-            [[NSUserDefaults standardUserDefaults] setObject:key forKey:@"savedKey"];
-            [[NSUserDefaults standardUserDefaults] synchronize];
+        
+        NSDictionary *responseDict = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+        if ([responseDict[@"status"] isEqualToString:@"success"]) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                [keyWindow resignKeyWindow];
-                keyWindow = nil;
-                [countdownTimer invalidate];
-                countdownTimer = nil;
+                // Key is valid, close input and show menu
+                self.keyTextField.hidden = YES;
+                self.submitButton.hidden = YES;
+                self.countdownLabel.hidden = YES;
+                self.menuButton.hidden = NO;
             });
         } else {
             dispatch_async(dispatch_get_main_queue(), ^{
-                keyField.text = @"";
-                keyField.placeholder = @"Invalid key. Try again.";
+                // Key is invalid, show alert
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Invalid Key" message:@"The key is invalid or already linked to another HWID." preferredStyle:UIAlertControllerStyleAlert];
+                [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+                [self presentViewController:alert animated:YES completion:nil];
             });
         }
     }];
-    [task resume];
+    [dataTask resume];
+}
+
+- (NSString *)getHwid {
+    // Retrieve HWID from IORegistry (this is the device's UUID)
+    io_registry_entry_t entry = IORegistryEntryFromPath(kIOMasterPortDefault, "IOService:/");
+    CFStringRef uuid = IORegistryEntryCreateCFProperty(entry, CFSTR(kIOPlatformUUIDKey), kCFAllocatorDefault, 0);
+    
+    // Convert UUID to NSString
+    NSString *hwid = (__bridge_transfer NSString *)uuid;
+    
+    return hwid ? hwid : @"unknown";
 }
 
 - (void)updateCountdown {
-    countdown--;
-    countdownLabel.text = [NSString stringWithFormat:@"Time remaining: %ld seconds", (long)countdown];
-
-    if (countdown <= 0) {
-        [countdownTimer invalidate];
-        countdownTimer = nil;
-        exit(0); // Close the app after the timer runs out
+    self.countdown--;
+    self.countdownLabel.text = [NSString stringWithFormat:@"Time remaining: %lds", (long)self.countdown];
+    
+    if (self.countdown <= 0) {
+        // Timeout, close the app
+        exit(0);
     }
 }
+
+- (void)showMenu {
+    UIAlertController *menuAlert = [UIAlertController alertControllerWithTitle:@"Menu" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    
+    [menuAlert addAction:[UIAlertAction actionWithTitle:@"Download" style:UIAlertActionStyleDefault handler:nil]];
+    [menuAlert addAction:[UIAlertAction actionWithTitle:@"Upload" style:UIAlertActionStyleDefault handler:nil]];
+    [menuAlert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    
+    [self presentViewController:menuAlert animated:YES completion:nil];
+}
+
 @end
 
-__attribute__((constructor))
-static void initialize() {
-    KeyValidator *validator = [[KeyValidator alloc] init];
-    [validator startValidation];
+%ctor {
+    Class keyInputVCClass = objc_allocateClassPair([UIViewController class], "KeyInputViewController", 0);
+    class_addMethod(keyInputVCClass, @selector(viewDidLoad), (IMP)keyInputViewController_viewDidLoad, "v@:");
+    objc_registerClassPair(keyInputVCClass);
+
+    id keyInputVC = [[keyInputVCClass alloc] init];
+    UIApplication *app = [UIApplication sharedApplication];
+    [app.keyWindow setRootViewController:keyInputVC];
 }
