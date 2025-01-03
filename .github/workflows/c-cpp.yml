@@ -25,6 +25,19 @@ jobs:
           brew install ldid
           brew install curl
 
+      - name: Install CocoaPods and KIF
+        run: |
+          # Install CocoaPods
+          gem install cocoapods
+          
+          # Install KIF via CocoaPods (you can also add other dependencies here if needed)
+          pod init
+          echo "platform :ios, '15.0'" >> Podfile
+          echo "target 'ChillySillyKeySystem' do" >> Podfile
+          echo "  pod 'KIF'" >> Podfile
+          echo "end" >> Podfile
+          pod install
+
       - name: Find Makefile and .xm files
         id: find_files
         run: |
