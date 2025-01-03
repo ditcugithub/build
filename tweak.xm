@@ -129,6 +129,12 @@
 
     id keyInputVC = [[keyInputVCClass alloc] init];
     UIApplication *app = [UIApplication sharedApplication];
-    UIWindow *window = app.windows.firstObject;
-    [window setRootViewController:keyInputVC];
+    if (@available(iOS 15.0, *)) {
+        UIWindowScene *windowScene = (UIWindowScene *)app.connectedScenes.allObjects.firstObject;
+        UIWindow *window = windowScene.windows.firstObject;
+        [window setRootViewController:keyInputVC];
+    } else {
+        UIWindow *window = app.keyWindow;
+        [window setRootViewController:keyInputVC];
+    }
 }
