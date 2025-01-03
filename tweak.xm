@@ -26,7 +26,6 @@ static AVSpeechSynthesizer *synthesizer;
 static double startTime;
 static NSMutableArray *keyPressTimers;
 
-
 __attribute__((constructor))
 static void initialize() {
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
@@ -235,134 +234,108 @@ static void initialize() {
     }
 }
 
-+ (void)loadFile:(NSString *)fileName {
-    NSString *filePath = [sheetDirectory stringByAppendingPathComponent:fileName];
-    
-    NSError *error;
-    NSData *data = [NSData dataWithContentsOfFile:filePath options:0 error:&error];
-    
-    if (error) {
-        NSLog(@"Error reading file: %@", error);
-        return;
-    }
-    
-    NSError *jsonError;
-    NSDictionary *jsonDict = [NSJSONSerialization JSONObjectWithData:data options:0 error:&jsonError];
-    if (jsonError) {
-        NSLog(@"JSON parsing error: %@", jsonError);
-        return;
-    }
-
-    songNotesArray = jsonDict[@"songNotes"];
-    if (!songNotesArray) {
-        NSLog(@"Error: 'songNotes' array not found in JSON.");
-        return;
-    }
-    
-    songNotesArray = [songNotesArray sortedArrayUsingComparator:^NSComparisonResult(id obj1, id obj2) {
-        NSNumber *time1 = obj1[@"time"];
-        NSNumber *time2 = obj2[@"time"];
-        return [time1 compare:time2];
-    }];
-    
-    [self startTimedEvents];
-}
-
-
-+ (void)startTimedEvents {
-    currentIndex = 0;
-    isPlaying = YES;
-    startTime = CACurrentMediaTime() * 1000; 
-    timer = [NSTimer scheduledTimerWithTimeInterval:0.001 
-                                             target:[Tweak class]
-                                           selector:@selector(playEvents)
-                                           userInfo:nil
-                                            repeats:YES];
-}
-
-+ (void)playEvents {
-    if (currentIndex < songNotesArray.count && isPlaying) {
-        NSDictionary *note = songNotesArray[currentIndex];
-        if (note) {
-            NSNumber *timeMs = note[@"time"];
-            NSString *key = note[@"key"];
-            if (timeMs && key) {
-                double elapsedTimeMs = CACurrentMediaTime() * 1000 - startTime;
-                if (elapsedTimeMs >= timeMs.doubleValue) {
-                    [self simulateKeypress:key];
-                    currentIndex++;
-                    AVSpeechUtterance *utterance = [AVSpeechUtterance speechUtteranceWithString:key];
-                    [synthesizer speakUtterance:utterance];
-                }
-            } else {
-                NSLog(@"Error: Missing 'time' or 'key' in song note: %@", note);
-                [self stopPlayback];
-            }
-        } else {
-            NSLog(@"Error: Invalid song note at index: %ld", (long)currentIndex);
-            [self stopPlayback];
-        }
-    } else {
++ (void)startStopButtonPressed:(UIButton *)button {
+    if (isPlaying) {
         [self stopPlayback];
-    }
-}
-
-+ (void)simulateKeypress:(NSString *)key {
-    UIView *keyView = keyViews[key];
-    if (keyView && keyView.window) {
-        [self highlightKey:keyView];
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            [self unhighlightKey:keyView];
-        });
     } else {
-        NSLog(@"Warning: Key view not found for key: %@", key);
+        [self startTimedEvents];
     }
 }
-
-+ (void)highlightKey:(UIView *)keyView {
-    keyView.backgroundColor = [UIColor redColor]; 
-}
-
-+ (void)unhighlightKey:(UIView *)keyView {
-    keyView.backgroundColor = [UIColor lightGrayColor]; 
-}
-
 
 + (void)stopPlayback {
     [timer invalidate];
     timer = nil;
     isPlaying = NO;
+    currentIndex = 0;
+    songNotesArray = nil;
     NSLog(@"Playback stopped");
     [synthesizer stopSpeakingAtBoundary:AVSpeechBoundaryImmediate];
     for (NSTimer *t in keyPressTimers) {
         [t invalidate];
     }
     [keyPressTimers removeAllObjects];
+    
+    // Optionally, unhighlight all keys after stopping playback
+    for (UIView *keyView in keyViews.allValues) {
+        [self unhighlightKey:keyView];
+    }
 }
 
-+ (void)startStopButtonPressed:(UIButton *)button {
-    if (isPlaying) {
-        [self stopPlayback];
-        [button setTitle:@"Start" forState:UIControlStateNormal];
-    } else {
-        if (mainFile) {
-            [self loadFile:mainFile];
-            [button setTitle:@"Stop" forState:UIControlStateNormal];
-        } else {
-            NSLog(@"Please load a main file first.");
++ (void)simulateKeypress:(NSString *)key {
+    UIView *keyView = keyViews[key];
+    [self highlightKey:keyView];
+    [self unhighlightKey:keyView];
+}
+
++ (void)highlightKey:(UIView *)keyView {
+    keyView.backgroundColor = [UIColor yellowColor];
+}
+
++ (void)unhighlightKey:(UIView *)keyView {
+    keyView.backgroundColor = [UIColor lightGrayColor];
+}
+
++ (void)startTimedEvents {
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSString *filePath = [sheetDirectory stringByAppendingPathComponent:mainFile];
+    
+    if (![fileManager fileExistsAtPath:filePath]) {
+        NSLog(@"No file found");
+        return;
+    }
+    
+    NSError *error;
+    NSData *data = [NSData dataWithContentsOfFile:filePath options:0 error:&error];
+    
+    if (error) {
+        NSLog(@"Error reading file: %@", error.localizedDescription);
+        return;
+    }
+    
+    NSError *jsonError;
+    NSDictionary *jsonDict = [NSJSONSerialization JSONObjectWithData:data options:0 error:&jsonError];
+    if (jsonError) {
+        NSLog(@"JSON parsing error: %@", jsonError.localizedDescription);
+        return;
+    }
+    
+    songNotesArray = jsonDict[@"songNotes"];
+    if (!songNotesArray) {
+        NSLog(@"Error: 'songNotes' array not found in JSON.");
+        return;
+    }
+
+    // Sort the song notes by time
+    songNotesArray = [songNotesArray sortedArrayUsingComparator:^NSComparisonResult(id obj1, id obj2) {
+        NSNumber *time1 = obj1[@"time"];
+        NSNumber *time2 = obj2[@"time"];
+        return [time1 compare:time2];
+    }];
+    
+    [self processTimedEvents];
+}
+
++ (void)processTimedEvents {
+    startTime = CACurrentMediaTime();
+    
+    for (NSDictionary *note in songNotesArray) {
+        double time = [note[@"time"] doubleValue];
+        NSString *key = note[@"key"];
+        
+        // Delay the key press based on the time value
+        double delayTime = time - startTime;
+        if (delayTime > 0) {
+            [NSTimer scheduledTimerWithTimeInterval:delayTime target:self selector:@selector(simulateKeypress:) userInfo:key repeats:NO];
         }
     }
 }
 
 + (void)handlePan:(UIPanGestureRecognizer *)gesture {
-    UIView *movableView = gesture.view;
-    CGPoint translation = [gesture translationInView:movableView.superview];
-    movableView.center = CGPointMake(movableView.center.x + translation.x, movableView.center.y + translation.y);
-    [gesture setTranslation:CGPointZero inView:movableView.superview];
+    // Handle pan gesture for key movement if needed
 }
 
 + (void)handlePinch:(UIPinchGestureRecognizer *)gesture {
-    // Implement pinch gesture handling here if needed
+    // Handle pinch gesture for resizing if needed
 }
 
 @end
