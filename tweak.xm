@@ -9,6 +9,7 @@
 + (void)loadButtonPressed:(UIButton *)button;
 + (void)deleteButtonPressed:(UIButton *)button;
 + (void)startStopButtonPressed:(UIButton *)button;
++ (void)stopPlayback;
 @end
 
 @implementation Tweak
@@ -100,6 +101,7 @@ static void initialize() {
                                                                                   message:@"Enter the name for the downloaded file:"
                                                                            preferredStyle:UIAlertControllerStyleAlert];
             [fileNameAlert addTextFieldWithConfigurationHandler:nil];
+
             UIAlertAction *downloadAction = [UIAlertAction actionWithTitle:@"Download" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
                 NSString *fileName = fileNameAlert.textFields[0].text;
                 if (fileName.length > 0) {
@@ -117,37 +119,30 @@ static void initialize() {
                     NSLog(@"Invalid file name");
                 }
             }];
+            
             [fileNameAlert addAction:downloadAction];
             [fileNameAlert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
             
-            for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-                if ([scene isKindOfClass:[UIWindowScene class]]) {
-                    UIWindowScene *windowScene = (UIWindowScene *)scene;
-                    UIWindow *window = windowScene.windows.firstObject;
-                    UIViewController *rootViewController = window.rootViewController;
-                    if (rootViewController) {
-                        [rootViewController presentViewController:fileNameAlert animated:YES completion:nil];
-                    }
-                    break;
-                }
+            UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
+            UIWindow *window = ((UIWindowScene *)scene).windows.firstObject;
+            UIViewController *rootViewController = window.rootViewController;
+            if (rootViewController) {
+                [rootViewController presentViewController:fileNameAlert animated:YES completion:nil];
             }
+            
         } else {
             NSLog(@"Invalid URL");
         }
     }];
+    
     [alert addAction:submitAction];
     [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     
-    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-        if ([scene isKindOfClass:[UIWindowScene class]]) {
-            UIWindowScene *windowScene = (UIWindowScene *)scene;
-            UIWindow *window = windowScene.windows.firstObject;
-            UIViewController *rootViewController = window.rootViewController;
-            if (rootViewController) {
-                [rootViewController presentViewController:alert animated:YES completion:nil];
-            }
-            break;
-        }
+    UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
+    UIWindow *window = ((UIWindowScene *)scene).windows.firstObject;
+    UIViewController *rootViewController = window.rootViewController;
+    if (rootViewController) {
+        [rootViewController presentViewController:alert animated:YES completion:nil];
     }
 }
 
@@ -169,16 +164,11 @@ static void initialize() {
         }
         [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
         
-        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-            if ([scene isKindOfClass:[UIWindowScene class]]) {
-                UIWindowScene *windowScene = (UIWindowScene *)scene;
-                UIWindow *window = windowScene.windows.firstObject;
-                UIViewController *rootViewController = window.rootViewController;
-                if (rootViewController) {
-                    [rootViewController presentViewController:alert animated:YES completion:nil];
-                }
-                break;
-            }
+        UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
+        UIWindow *window = ((UIWindowScene *)scene).windows.firstObject;
+        UIViewController *rootViewController = window.rootViewController;
+        if (rootViewController) {
+            [rootViewController presentViewController:alert animated:YES completion:nil];
         }
     } else {
         NSLog(@"No files found in the sheet directory.");
@@ -208,16 +198,11 @@ static void initialize() {
         }
         [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
         
-        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-            if ([scene isKindOfClass:[UIWindowScene class]]) {
-                UIWindowScene *windowScene = (UIWindowScene *)scene;
-                UIWindow *window = windowScene.windows.firstObject;
-                UIViewController *rootViewController = window.rootViewController;
-                if (rootViewController) {
-                    [rootViewController presentViewController:alert animated:YES completion:nil];
-                }
-                break;
-            }
+        UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
+        UIWindow *window = ((UIWindowScene *)scene).windows.firstObject;
+        UIViewController *rootViewController = window.rootViewController;
+        if (rootViewController) {
+            [rootViewController presentViewController:alert animated:YES completion:nil];
         }
     } else {
         NSLog(@"No files found in the sheet directory.");
@@ -252,7 +237,7 @@ static void initialize() {
     songNotesArray = songNotes;
     currentIndex = 0;
     isPlaying = YES;
-    
+
     timer = [NSTimer scheduledTimerWithTimeInterval:0.001
                                              target:[Tweak class]
                                            selector:@selector(playEvents)
@@ -263,21 +248,27 @@ static void initialize() {
 + (void)playEvents {
     if (currentIndex < songNotesArray.count && isPlaying) {
         NSDictionary *note = songNotesArray[currentIndex];
-        NSNumber *time = note[@"time"];
-        NSString *key = note[@"key"];
-
-        if (CACurrentMediaTime() * 1000 >= time.doubleValue) {
-            [self simulateClickForKey:key];
-            currentIndex++;
-            
-            AVSpeechUtterance *utterance = [AVSpeechUtterance speechUtteranceWithString:key];
-            [synthesizer speakUtterance:utterance];
+        if (note) {
+            NSNumber *timeMs = note[@"time"];
+            NSString *key = note[@"key"];
+            if (timeMs && key) {
+                double currentTimeMs = CACurrentMediaTime() * 1000;
+                if (currentTimeMs >= timeMs.doubleValue) {
+                    [self simulateClickForKey:key];
+                    currentIndex++;
+                    AVSpeechUtterance *utterance = [AVSpeechUtterance speechUtteranceWithString:key];
+                    [synthesizer speakUtterance:utterance];
+                }
+            } else {
+                NSLog(@"Error: Missing 'time' or 'key' in song note: %@", note);
+                [self stopPlayback];
+            }
+        } else {
+            NSLog(@"Error: Invalid song note at index: %ld", (long)currentIndex);
+            [self stopPlayback];
         }
     } else {
-        [timer invalidate];
-        timer = nil;
-        isPlaying = NO;
-        NSLog(@"Playback finished");
+        [self stopPlayback];
     }
 }
 
@@ -286,7 +277,29 @@ static void initialize() {
     if (keyView && keyView.window) {
         [keyView accessibilityActivate];
     } else {
-        NSLog(@"No view found for key: %@", key);
+        NSLog(@"Warning: Key view not found for key: %@", key);
+    }
+}
+
++ (void)stopPlayback {
+    [timer invalidate];
+    timer = nil;
+    isPlaying = NO;
+    NSLog(@"Playback stopped");
+    [synthesizer stopSpeakingAtBoundary:AVSpeechBoundaryImmediate];
+}
+
++ (void)startStopButtonPressed:(UIButton *)button {
+    if (isPlaying) {
+        [self stopPlayback];
+        [button setTitle:@"Start" forState:UIControlStateNormal];
+    } else {
+        if (mainFile) {
+            [self loadFile:mainFile];
+            [button setTitle:@"Stop" forState:UIControlStateNormal];
+        } else {
+            NSLog(@"Please load a main file first.");
+        }
     }
 }
 
@@ -299,23 +312,6 @@ static void initialize() {
 
 + (void)handlePinch:(UIPinchGestureRecognizer *)gesture {
     // Implement pinch gesture handling here
-}
-
-+ (void)startStopButtonPressed:(UIButton *)button {
-    if (isPlaying) {
-        [timer invalidate];
-        timer = nil;
-        isPlaying = NO;
-        [button setTitle:@"Start" forState:UIControlStateNormal];
-        [synthesizer stopSpeakingAtBoundary:AVSpeechBoundaryImmediate];
-    } else {
-        if (mainFile) {
-            [self loadFile:mainFile];
-            [button setTitle:@"Stop" forState:UIControlStateNormal];
-        } else {
-            NSLog(@"Please load a main file first.");
-        }
-    }
 }
 
 @end
