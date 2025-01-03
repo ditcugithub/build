@@ -36,11 +36,10 @@ static void initialize() {
 
     dispatch_async(dispatch_get_main_queue(), ^{
         for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-            if ([scene isKindOfClass:UIWindowScene.class]) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
                 UIWindowScene *windowScene = (UIWindowScene *)scene;
-                NSArray<UIWindow *> *windows = windowScene.windows;
-                if (windows.count > 0) {
-                    UIWindow *window = windows[0]; 
+                UIWindow *window = windowScene.windows.firstObject;
+                if (window) {
                     for (int i = 0; i <= 14; i++) {
                         UILabel *keyLabel = [[UILabel alloc] initWithFrame:CGRectMake(50 + (i * 40), 300, 35, 50)];
                         keyLabel.text = [NSString stringWithFormat:@"Key%d", i];
@@ -121,11 +120,16 @@ static void initialize() {
             [fileNameAlert addAction:downloadAction];
             [fileNameAlert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
             
-            UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-            UIWindow *window = ((UIWindowScene *)scene).windows.firstObject;
-            UIViewController *rootViewController = window.rootViewController;
-            if (rootViewController) {
-                [rootViewController presentViewController:fileNameAlert animated:YES completion:nil];
+            for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+                if ([scene isKindOfClass:[UIWindowScene class]]) {
+                    UIWindowScene *windowScene = (UIWindowScene *)scene;
+                    UIWindow *window = windowScene.windows.firstObject;
+                    UIViewController *rootViewController = window.rootViewController;
+                    if (rootViewController) {
+                        [rootViewController presentViewController:fileNameAlert animated:YES completion:nil];
+                    }
+                    break;
+                }
             }
         } else {
             NSLog(@"Invalid URL");
@@ -134,11 +138,16 @@ static void initialize() {
     [alert addAction:submitAction];
     [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     
-    UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-    UIWindow *window = ((UIWindowScene *)scene).windows.firstObject;
-    UIViewController *rootViewController = window.rootViewController;
-    if (rootViewController) {
-        [rootViewController presentViewController:alert animated:YES completion:nil];
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if ([scene isKindOfClass:[UIWindowScene class]]) {
+            UIWindowScene *windowScene = (UIWindowScene *)scene;
+            UIWindow *window = windowScene.windows.firstObject;
+            UIViewController *rootViewController = window.rootViewController;
+            if (rootViewController) {
+                [rootViewController presentViewController:alert animated:YES completion:nil];
+            }
+            break;
+        }
     }
 }
 
@@ -160,11 +169,16 @@ static void initialize() {
         }
         [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
         
-        UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-        UIWindow *window = ((UIWindowScene *)scene).windows.firstObject;
-        UIViewController *rootViewController = window.rootViewController;
-        if (rootViewController) {
-            [rootViewController presentViewController:alert animated:YES completion:nil];
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                UIWindowScene *windowScene = (UIWindowScene *)scene;
+                UIWindow *window = windowScene.windows.firstObject;
+                UIViewController *rootViewController = window.rootViewController;
+                if (rootViewController) {
+                    [rootViewController presentViewController:alert animated:YES completion:nil];
+                }
+                break;
+            }
         }
     } else {
         NSLog(@"No files found in the sheet directory.");
@@ -194,11 +208,16 @@ static void initialize() {
         }
         [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
         
-        UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-        UIWindow *window = ((UIWindowScene *)scene).windows.firstObject;
-        UIViewController *rootViewController = window.rootViewController;
-        if (rootViewController) {
-            [rootViewController presentViewController:alert animated:YES completion:nil];
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                UIWindowScene *windowScene = (UIWindowScene *)scene;
+                UIWindow *window = windowScene.windows.firstObject;
+                UIViewController *rootViewController = window.rootViewController;
+                if (rootViewController) {
+                    [rootViewController presentViewController:alert animated:YES completion:nil];
+                }
+                break;
+            }
         }
     } else {
         NSLog(@"No files found in the sheet directory.");
