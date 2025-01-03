@@ -35,49 +35,53 @@ static void initialize() {
     synthesizer = [[AVSpeechSynthesizer alloc] init];
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-        UIWindow *window = scene.delegate.window;
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if ([scene isKindOfClass:UIWindowScene.class]) {
+                UIWindowScene *windowScene = (UIWindowScene *)scene;
+                UIWindow *window = windowScene.windows.firstObject;
+                if (window) {
+                    for (int i = 0; i <= 14; i++) {
+                        UILabel *keyLabel = [[UILabel alloc] initWithFrame:CGRectMake(50 + (i * 40), 300, 35, 50)];
+                        keyLabel.text = [NSString stringWithFormat:@"Key%d", i];
+                        keyLabel.accessibilityLabel = keyLabel.text;
+                        keyLabel.textAlignment = NSTextAlignmentCenter;
+                        keyLabel.backgroundColor = [UIColor lightGrayColor];
+                        keyLabel.layer.cornerRadius = 10;
+                        keyLabel.layer.masksToBounds = YES;
+                        keyLabel.font = [UIFont systemFontOfSize:10];
+                        keyLabel.userInteractionEnabled = YES;
+                        UIPanGestureRecognizer *panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePan:)];
+                        [keyLabel addGestureRecognizer:panGesture];
+                        [window addSubview:keyLabel];
+                        keyViews[[NSString stringWithFormat:@"Key%d", i]] = keyLabel;
+                    }
 
-        if (window) {
-            for (int i = 0; i <= 14; i++) {
-                UILabel *keyLabel = [[UILabel alloc] initWithFrame:CGRectMake(50 + (i * 40), 300, 35, 50)];
-                keyLabel.text = [NSString stringWithFormat:@"Key%d", i];
-                keyLabel.accessibilityLabel = keyLabel.text;
-                keyLabel.textAlignment = NSTextAlignmentCenter;
-                keyLabel.backgroundColor = [UIColor lightGrayColor];
-                keyLabel.layer.cornerRadius = 10;
-                keyLabel.layer.masksToBounds = YES;
-                keyLabel.font = [UIFont systemFontOfSize:10];
-                keyLabel.userInteractionEnabled = YES;
-                UIPanGestureRecognizer *panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:[Tweak class] action:@selector(handlePan:)];
-                [keyLabel addGestureRecognizer:panGesture];
-                [window addSubview:keyLabel];
-                keyViews[[NSString stringWithFormat:@"Key%d", i]] = keyLabel;
+                    UIButton *uploadButton = [UIButton buttonWithType:UIButtonTypeSystem];
+                    uploadButton.frame = CGRectMake(20, 100, 80, 50);
+                    [uploadButton setTitle:@"Upload" forState:UIControlStateNormal];
+                    [uploadButton addTarget:[Tweak class] action:@selector(uploadButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
+                    [window addSubview:uploadButton];
+
+                    UIButton *loadButton = [UIButton buttonWithType:UIButtonTypeSystem];
+                    loadButton.frame = CGRectMake(120, 100, 80, 50);
+                    [loadButton setTitle:@"Load" forState:UIControlStateNormal];
+                    [loadButton addTarget:[Tweak class] action:@selector(loadButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
+                    [window addSubview:loadButton];
+
+                    UIButton *deleteButton = [UIButton buttonWithType:UIButtonTypeSystem];
+                    deleteButton.frame = CGRectMake(220, 100, 80, 50);
+                    [deleteButton setTitle:@"Delete" forState:UIControlStateNormal];
+                    [deleteButton addTarget:[Tweak class] action:@selector(deleteButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
+                    [window addSubview:deleteButton];
+
+                    UIButton *startButton = [UIButton buttonWithType:UIButtonTypeSystem];
+                    startButton.frame = CGRectMake(320, 100, 80, 50);
+                    [startButton setTitle:@"Start" forState:UIControlStateNormal];
+                    [startButton addTarget:[Tweak class] action:@selector(startStopButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
+                    [window addSubview:startButton];
+                }
+                break;
             }
-
-            UIButton *uploadButton = [UIButton buttonWithType:UIButtonTypeSystem];
-            uploadButton.frame = CGRectMake(20, 100, 80, 50);
-            [uploadButton setTitle:@"Upload" forState:UIControlStateNormal];
-            [uploadButton addTarget:[Tweak class] action:@selector(uploadButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
-            [window addSubview:uploadButton];
-
-            UIButton *loadButton = [UIButton buttonWithType:UIButtonTypeSystem];
-            loadButton.frame = CGRectMake(120, 100, 80, 50);
-            [loadButton setTitle:@"Load" forState:UIControlStateNormal];
-            [loadButton addTarget:[Tweak class] action:@selector(loadButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
-            [window addSubview:loadButton];
-
-            UIButton *deleteButton = [UIButton buttonWithType:UIButtonTypeSystem];
-            deleteButton.frame = CGRectMake(220, 100, 80, 50);
-            [deleteButton setTitle:@"Delete" forState:UIControlStateNormal];
-            [deleteButton addTarget:[Tweak class] action:@selector(deleteButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
-            [window addSubview:deleteButton];
-
-            UIButton *startButton = [UIButton buttonWithType:UIButtonTypeSystem];
-            startButton.frame = CGRectMake(320, 100, 80, 50);
-            [startButton setTitle:@"Start" forState:UIControlStateNormal];
-            [startButton addTarget:[Tweak class] action:@selector(startStopButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
-            [window addSubview:startButton];
         }
     });
 }
@@ -121,7 +125,7 @@ static void initialize() {
             [fileNameAlert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
             
             UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-            UIWindow *window = scene.delegate.window;
+            UIWindow *window = ((UIWindowScene *)scene).windows.firstObject;
             UIViewController *rootViewController = window.rootViewController;
             if (rootViewController) {
                 [rootViewController presentViewController:fileNameAlert animated:YES completion:nil];
@@ -136,7 +140,7 @@ static void initialize() {
     [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     
     UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-    UIWindow *window = scene.delegate.window;
+    UIWindow *window = ((UIWindowScene *)scene).windows.firstObject;
     UIViewController *rootViewController = window.rootViewController;
     if (rootViewController) {
         [rootViewController presentViewController:alert animated:YES completion:nil];
@@ -162,7 +166,7 @@ static void initialize() {
         [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
         
         UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-        UIWindow *window = scene.delegate.window;
+        UIWindow *window = ((UIWindowScene *)scene).windows.firstObject;
         UIViewController *rootViewController = window.rootViewController;
         if (rootViewController) {
             [rootViewController presentViewController:alert animated:YES completion:nil];
@@ -196,7 +200,7 @@ static void initialize() {
         [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
         
         UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-        UIWindow *window = scene.delegate.window;
+        UIWindow *window = ((UIWindowScene *)scene).windows.firstObject;
         UIViewController *rootViewController = window.rootViewController;
         if (rootViewController) {
             [rootViewController presentViewController:alert animated:YES completion:nil];
