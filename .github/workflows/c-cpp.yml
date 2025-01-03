@@ -25,27 +25,6 @@ jobs:
           brew install ldid
           brew install curl
 
-      - name: Install CocoaPods and KIF
-        run: |
-          # Install CocoaPods if it's not installed
-          gem install cocoapods
-          
-          # Initialize CocoaPods if necessary
-          if [ ! -f "Podfile" ]; then
-            pod init
-          fi
-
-          # Check if Podfile exists and if not, create it
-          if [ ! -f "Podfile" ]; then
-            echo "platform :ios, '15.0'" > Podfile
-            echo "target 'ChillySillyKeySystem' do" >> Podfile
-            echo "  pod 'KIF'" >> Podfile
-            echo "end" >> Podfile
-          fi
-
-          # Install pods without requiring an Xcode project
-          pod install --no-integrate --repo-update || true
-
       - name: Find Makefile and .xm files
         id: find_files
         run: |
