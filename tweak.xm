@@ -24,7 +24,6 @@ static AVSpeechSynthesizer *synthesizer;
 
 __attribute__((constructor))
 static void initialize() {
-    // Create "sheet" directory
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
     sheetDirectory = [paths.firstObject stringByAppendingPathComponent:@"sheet"];
     
@@ -36,7 +35,8 @@ static void initialize() {
     synthesizer = [[AVSpeechSynthesizer alloc] init];
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        UIWindow *window = UIApplication.sharedApplication.keyWindow; //Get the keyWindow directly
+        UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
+        UIWindow *window = scene.delegate.window;
 
         if (window) {
             for (int i = 0; i <= 14; i++) {
@@ -120,7 +120,13 @@ static void initialize() {
             [fileNameAlert addAction:downloadAction];
             [fileNameAlert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
             
-            [UIApplication.sharedApplication.keyWindow.rootViewController presentViewController:fileNameAlert animated:YES completion:nil];
+            UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
+            UIWindow *window = scene.delegate.window;
+            UIViewController *rootViewController = window.rootViewController;
+            if (rootViewController) {
+                [rootViewController presentViewController:fileNameAlert animated:YES completion:nil];
+            }
+            
         } else {
             NSLog(@"Invalid URL");
         }
@@ -129,7 +135,12 @@ static void initialize() {
     [alert addAction:submitAction];
     [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     
-    [UIApplication.sharedApplication.keyWindow.rootViewController presentViewController:alert animated:YES completion:nil];
+    UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
+    UIWindow *window = scene.delegate.window;
+    UIViewController *rootViewController = window.rootViewController;
+    if (rootViewController) {
+        [rootViewController presentViewController:alert animated:YES completion:nil];
+    }
 }
 
 + (void)loadButtonPressed:(UIButton *)button {
@@ -150,7 +161,12 @@ static void initialize() {
         }
         [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
         
-        [UIApplication.sharedApplication.keyWindow.rootViewController presentViewController:alert animated:YES completion:nil];
+        UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
+        UIWindow *window = scene.delegate.window;
+        UIViewController *rootViewController = window.rootViewController;
+        if (rootViewController) {
+            [rootViewController presentViewController:alert animated:YES completion:nil];
+        }
     } else {
         NSLog(@"No files found in the sheet directory.");
     }
@@ -179,7 +195,12 @@ static void initialize() {
         }
         [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
         
-        [UIApplication.sharedApplication.keyWindow.rootViewController presentViewController:alert animated:YES completion:nil];
+        UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
+        UIWindow *window = scene.delegate.window;
+        UIViewController *rootViewController = window.rootViewController;
+        if (rootViewController) {
+            [rootViewController presentViewController:alert animated:YES completion:nil];
+        }
     } else {
         NSLog(@"No files found in the sheet directory.");
     }
@@ -244,21 +265,8 @@ static void initialize() {
 
 + (void)simulateClickForKey:(NSString *)key {
     UIView *keyView = keyViews[key];
-    if (keyView) {
-        CGPoint keyPosition = [keyView.superview convertPoint:keyView.center toView:nil];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            NSLog(@"Simulating click at: %@", NSStringFromCGPoint(keyPosition));
-
-            UIEvent *event = [[UIEvent alloc] initWithTimestamp:[NSDate timeIntervalSinceReferenceDate]];
-            UITouch *touch = [[UITouch alloc] initWithType:UITouchTypeDirect
-                                               locationInView:keyView.window
-                                                withPosition:keyPosition
-                                                  inView:keyView.window
-                                            withTimestamp:[NSDate timeIntervalSinceReferenceDate]];
-            
-            [keyView.window touchesBegan:[NSSet setWithObject:touch] withEvent:event];
-            [keyView.window touchesEnded:[NSSet setWithObject:touch] withEvent:event];
-        });
+    if (keyView && keyView.window) {
+        [keyView accessibilityActivate];
     } else {
         NSLog(@"No view found for key: %@", key);
     }
