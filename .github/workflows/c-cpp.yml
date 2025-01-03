@@ -27,16 +27,24 @@ jobs:
 
       - name: Install CocoaPods and KIF
         run: |
-          # Install CocoaPods
+          # Install CocoaPods if it's not installed
           gem install cocoapods
           
-          # Install KIF via CocoaPods (you can also add other dependencies here if needed)
-          pod init
-          echo "platform :ios, '15.0'" >> Podfile
-          echo "target 'ChillySillyKeySystem' do" >> Podfile
-          echo "  pod 'KIF'" >> Podfile
-          echo "end" >> Podfile
-          pod install
+          # Initialize CocoaPods if necessary
+          if [ ! -f "Podfile" ]; then
+            pod init
+          fi
+
+          # Check if Podfile exists and if not, create it
+          if [ ! -f "Podfile" ]; then
+            echo "platform :ios, '15.0'" > Podfile
+            echo "target 'ChillySillyKeySystem' do" >> Podfile
+            echo "  pod 'KIF'" >> Podfile
+            echo "end" >> Podfile
+          fi
+
+          # Install pods
+          pod install --repo-update || true
 
       - name: Find Makefile and .xm files
         id: find_files
