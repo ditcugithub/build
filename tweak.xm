@@ -4,7 +4,7 @@
 @interface Tweak : NSObject
 + (void)handlePan:(UIPanGestureRecognizer *)gesture;
 + (void)handlePinch:(UIPinchGestureRecognizer *)gesture;
-+ (void)startTimedEvents:(NSArray *)songNotes;
++ (void)startTimedEvents;
 + (void)uploadButtonPressed:(UIButton *)button;
 + (void)loadButtonPressed:(UIButton *)button;
 + (void)deleteButtonPressed:(UIButton *)button;
@@ -22,6 +22,8 @@ static NSString *sheetDirectory;
 static NSMutableDictionary<NSString *, UIView *> *keyViews;
 static NSString *mainFile;
 static AVSpeechSynthesizer *synthesizer;
+static double startTime;
+
 
 __attribute__((constructor))
 static void initialize() {
@@ -39,8 +41,9 @@ static void initialize() {
         for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
             if ([scene isKindOfClass:[UIWindowScene class]]) {
                 UIWindowScene *windowScene = (UIWindowScene *)scene;
-                UIWindow *window = windowScene.windows.firstObject;
-                if (window) {
+                NSArray<UIWindow *> *windows = windowScene.windows;
+                if (windows.count > 0) {
+                    UIWindow *window = windows[0];
                     for (int i = 0; i <= 14; i++) {
                         UILabel *keyLabel = [[UILabel alloc] initWithFrame:CGRectMake(50 + (i * 40), 300, 35, 50)];
                         keyLabel.text = [NSString stringWithFormat:@"Key%d", i];
@@ -101,7 +104,6 @@ static void initialize() {
                                                                                   message:@"Enter the name for the downloaded file:"
                                                                            preferredStyle:UIAlertControllerStyleAlert];
             [fileNameAlert addTextFieldWithConfigurationHandler:nil];
-
             UIAlertAction *downloadAction = [UIAlertAction actionWithTitle:@"Download" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
                 NSString *fileName = fileNameAlert.textFields[0].text;
                 if (fileName.length > 0) {
@@ -119,30 +121,37 @@ static void initialize() {
                     NSLog(@"Invalid file name");
                 }
             }];
-            
             [fileNameAlert addAction:downloadAction];
             [fileNameAlert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
             
-            UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-            UIWindow *window = ((UIWindowScene *)scene).windows.firstObject;
-            UIViewController *rootViewController = window.rootViewController;
-            if (rootViewController) {
-                [rootViewController presentViewController:fileNameAlert animated:YES completion:nil];
+            for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+                if ([scene isKindOfClass:[UIWindowScene class]]) {
+                    UIWindowScene *windowScene = (UIWindowScene *)scene;
+                    UIWindow *window = windowScene.windows.firstObject;
+                    UIViewController *rootViewController = window.rootViewController;
+                    if (rootViewController) {
+                        [rootViewController presentViewController:fileNameAlert animated:YES completion:nil];
+                    }
+                    break;
+                }
             }
-            
         } else {
             NSLog(@"Invalid URL");
         }
     }];
-    
     [alert addAction:submitAction];
     [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     
-    UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-    UIWindow *window = ((UIWindowScene *)scene).windows.firstObject;
-    UIViewController *rootViewController = window.rootViewController;
-    if (rootViewController) {
-        [rootViewController presentViewController:alert animated:YES completion:nil];
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if ([scene isKindOfClass:[UIWindowScene class]]) {
+            UIWindowScene *windowScene = (UIWindowScene *)scene;
+            UIWindow *window = windowScene.windows.firstObject;
+            UIViewController *rootViewController = window.rootViewController;
+            if (rootViewController) {
+                [rootViewController presentViewController:alert animated:YES completion:nil];
+            }
+            break;
+        }
     }
 }
 
@@ -164,11 +173,16 @@ static void initialize() {
         }
         [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
         
-        UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-        UIWindow *window = ((UIWindowScene *)scene).windows.firstObject;
-        UIViewController *rootViewController = window.rootViewController;
-        if (rootViewController) {
-            [rootViewController presentViewController:alert animated:YES completion:nil];
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                UIWindowScene *windowScene = (UIWindowScene *)scene;
+                UIWindow *window = windowScene.windows.firstObject;
+                UIViewController *rootViewController = window.rootViewController;
+                if (rootViewController) {
+                    [rootViewController presentViewController:alert animated:YES completion:nil];
+                }
+                break;
+            }
         }
     } else {
         NSLog(@"No files found in the sheet directory.");
@@ -198,11 +212,16 @@ static void initialize() {
         }
         [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
         
-        UIWindowScene *scene = UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-        UIWindow *window = ((UIWindowScene *)scene).windows.firstObject;
-        UIViewController *rootViewController = window.rootViewController;
-        if (rootViewController) {
-            [rootViewController presentViewController:alert animated:YES completion:nil];
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                UIWindowScene *windowScene = (UIWindowScene *)scene;
+                UIWindow *window = windowScene.windows.firstObject;
+                UIViewController *rootViewController = window.rootViewController;
+                if (rootViewController) {
+                    [rootViewController presentViewController:alert animated:YES completion:nil];
+                }
+                break;
+            }
         }
     } else {
         NSLog(@"No files found in the sheet directory.");
@@ -212,33 +231,42 @@ static void initialize() {
 + (void)loadFile:(NSString *)fileName {
     NSString *filePath = [sheetDirectory stringByAppendingPathComponent:fileName];
     
-    NSError *error = nil;
+    NSError *error;
     NSData *data = [NSData dataWithContentsOfFile:filePath options:0 error:&error];
     
     if (error) {
-        NSLog(@"Error reading file: %@", error.localizedDescription);
+        NSLog(@"Error reading file: %@", error);
         return;
     }
     
-    NSError *jsonError = nil;
+    NSError *jsonError;
     NSDictionary *jsonDict = [NSJSONSerialization JSONObjectWithData:data options:0 error:&jsonError];
-    
     if (jsonError) {
-        NSLog(@"JSON parsing error: %@", jsonError.localizedDescription);
+        NSLog(@"JSON parsing error: %@", jsonError);
+        return;
+    }
+
+    songNotesArray = jsonDict[@"songNotes"];
+    if (!songNotesArray) {
+        NSLog(@"Error: 'songNotes' array not found in JSON.");
         return;
     }
     
-    NSArray *songNotes = jsonDict[@"songNotes"];
-    [self startTimedEvents:songNotes];
+    songNotesArray = [songNotesArray sortedArrayUsingComparator:^NSComparisonResult(id obj1, id obj2) {
+        NSNumber *time1 = obj1[@"time"];
+        NSNumber *time2 = obj2[@"time"];
+        return [time1 compare:time2];
+    }];
+    
+    [self startTimedEvents];
 }
 
 
-+ (void)startTimedEvents:(NSArray *)songNotes {
-    songNotesArray = songNotes;
++ (void)startTimedEvents {
     currentIndex = 0;
     isPlaying = YES;
-
-    timer = [NSTimer scheduledTimerWithTimeInterval:0.001
+    startTime = CACurrentMediaTime() * 1000; 
+    timer = [NSTimer scheduledTimerWithTimeInterval:0.001 
                                              target:[Tweak class]
                                            selector:@selector(playEvents)
                                            userInfo:nil
@@ -252,8 +280,8 @@ static void initialize() {
             NSNumber *timeMs = note[@"time"];
             NSString *key = note[@"key"];
             if (timeMs && key) {
-                double currentTimeMs = CACurrentMediaTime() * 1000;
-                if (currentTimeMs >= timeMs.doubleValue) {
+                double elapsedTimeMs = CACurrentMediaTime() * 1000 - startTime;
+                if (elapsedTimeMs >= timeMs.doubleValue) {
                     [self simulateClickForKey:key];
                     currentIndex++;
                     AVSpeechUtterance *utterance = [AVSpeechUtterance speechUtteranceWithString:key];
@@ -311,7 +339,7 @@ static void initialize() {
 }
 
 + (void)handlePinch:(UIPinchGestureRecognizer *)gesture {
-    // Implement pinch gesture handling here
+    // Implement pinch gesture handling here if needed
 }
 
 @end
