@@ -1,6 +1,5 @@
-#import <Cocoa/Cocoa.h>
+#import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
-#import <objc/runtime.h>
 #import <IOKit/IOKitLib.h>
 
 // Helper function to get the HWID (Hardware ID)
@@ -11,16 +10,17 @@ NSString *getHWID() {
     return (__bridge_transfer NSString *)uuidCf;
 }
 
-// Dylib implementation
+// Main class for key validation
 @interface KeyValidator : NSObject
 - (void)startValidation;
 @end
 
 @implementation KeyValidator {
-    NSWindow *inputWindow;
-    NSTextField *keyField;
-    NSTextField *countdownLabel;
-    NSButton *submitButton;
+    UIWindow *keyWindow;
+    UIView *keyInputView;
+    UITextField *keyField;
+    UILabel *countdownLabel;
+    UIButton *submitButton;
     NSInteger countdown;
     NSTimer *countdownTimer;
 }
@@ -28,7 +28,7 @@ NSString *getHWID() {
 - (instancetype)init {
     self = [super init];
     if (self) {
-        countdown = 90; // Countdown starts at 90 seconds
+        countdown = 90; // Set the countdown timer to 90 seconds
     }
     return self;
 }
@@ -43,34 +43,41 @@ NSString *getHWID() {
 }
 
 - (void)showKeyInputDialog {
-    inputWindow = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 400, 200)
-                                              styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskClosable)
-                                                backing:NSBackingStoreBuffered
-                                                  defer:NO];
-    [inputWindow setTitle:@"Enter Key"];
-    [inputWindow center];
+    // Create a new UIWindow
+    keyWindow = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+    keyWindow.backgroundColor = [UIColor colorWithWhite:0 alpha:0.7];
+    keyWindow.windowLevel = UIWindowLevelAlert + 1;
 
-    keyField = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 120, 360, 30)];
-    [keyField setPlaceholderString:@"Enter your key here"];
-    [[inputWindow contentView] addSubview:keyField];
+    // Create the main view for the key input dialog
+    keyInputView = [[UIView alloc] initWithFrame:CGRectMake(50, 200, keyWindow.frame.size.width - 100, 200)];
+    keyInputView.backgroundColor = [UIColor whiteColor];
+    keyInputView.layer.cornerRadius = 10;
 
-    countdownLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 70, 360, 30)];
-    [countdownLabel setEditable:NO];
-    [countdownLabel setBordered:NO];
-    [countdownLabel setBackgroundColor:[NSColor clearColor]];
-    [countdownLabel setFont:[NSFont systemFontOfSize:14]];
-    [countdownLabel setStringValue:[NSString stringWithFormat:@"Time remaining: %ld seconds", (long)countdown]];
-    [[inputWindow contentView] addSubview:countdownLabel];
+    // Create the key input field
+    keyField = [[UITextField alloc] initWithFrame:CGRectMake(20, 50, keyInputView.frame.size.width - 40, 40)];
+    keyField.placeholder = @"Enter your key";
+    keyField.borderStyle = UITextBorderStyleRoundedRect;
+    keyField.textAlignment = NSTextAlignmentCenter;
+    [keyInputView addSubview:keyField];
 
-    submitButton = [[NSButton alloc] initWithFrame:NSMakeRect(150, 20, 100, 30)];
-    [submitButton setTitle:@"Submit"];
-    [submitButton setTarget:self];
-    [submitButton setAction:@selector(submitKey)];
-    [[inputWindow contentView] addSubview:submitButton];
+    // Create the countdown label
+    countdownLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, 100, keyInputView.frame.size.width - 40, 30)];
+    countdownLabel.text = [NSString stringWithFormat:@"Time remaining: %ld seconds", (long)countdown];
+    countdownLabel.textAlignment = NSTextAlignmentCenter;
+    countdownLabel.font = [UIFont systemFontOfSize:14];
+    [keyInputView addSubview:countdownLabel];
 
-    [inputWindow makeKeyAndOrderFront:nil];
-    [NSApp run];
-    
+    // Create the submit button
+    submitButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    submitButton.frame = CGRectMake((keyInputView.frame.size.width - 100) / 2, 140, 100, 40);
+    [submitButton setTitle:@"Submit" forState:UIControlStateNormal];
+    [submitButton addTarget:self action:@selector(submitKey) forControlEvents:UIControlEventTouchUpInside];
+    [keyInputView addSubview:submitButton];
+
+    [keyWindow addSubview:keyInputView];
+    [keyWindow makeKeyAndVisible];
+
+    // Start the countdown timer
     countdownTimer = [NSTimer scheduledTimerWithTimeInterval:1.0
                                                       target:self
                                                     selector:@selector(updateCountdown)
@@ -79,7 +86,7 @@ NSString *getHWID() {
 }
 
 - (void)submitKey {
-    NSString *key = [keyField stringValue];
+    NSString *key = keyField.text;
     if (key.length == 0) {
         return;
     }
@@ -88,7 +95,7 @@ NSString *getHWID() {
 
 - (void)validateKey:(NSString *)key {
     NSString *hwid = getHWID();
-    NSString *urlString = [NSString stringWithFormat:@"https://chillysilly.frfrnocap.men/key_checker.php?key=%@&hwid=%@", key, hwid];
+    NSString *urlString = [NSString stringWithFormat:@"https://chillysilly.frfrnocap.men/check_key.php?key=%@&hwid=%@", key, hwid];
     NSURL *url = [NSURL URLWithString:urlString];
     NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error) {
@@ -102,15 +109,15 @@ NSString *getHWID() {
             [[NSUserDefaults standardUserDefaults] setObject:key forKey:@"savedKey"];
             [[NSUserDefaults standardUserDefaults] synchronize];
             dispatch_async(dispatch_get_main_queue(), ^{
-                [inputWindow close];
+                [keyWindow resignKeyWindow];
+                keyWindow = nil;
                 [countdownTimer invalidate];
                 countdownTimer = nil;
-                [NSApp stop:nil];
             });
         } else {
             dispatch_async(dispatch_get_main_queue(), ^{
-                [keyField setStringValue:@""];
-                [keyField setPlaceholderString:@"Invalid key. Try again."];
+                keyField.text = @"";
+                keyField.placeholder = @"Invalid key. Try again.";
             });
         }
     }];
@@ -119,12 +126,12 @@ NSString *getHWID() {
 
 - (void)updateCountdown {
     countdown--;
-    [countdownLabel setStringValue:[NSString stringWithFormat:@"Time remaining: %ld seconds", (long)countdown]];
+    countdownLabel.text = [NSString stringWithFormat:@"Time remaining: %ld seconds", (long)countdown];
 
     if (countdown <= 0) {
         [countdownTimer invalidate];
         countdownTimer = nil;
-        [NSApp terminate:nil];
+        exit(0); // Close the app after the timer runs out
     }
 }
 @end
