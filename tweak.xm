@@ -1,6 +1,12 @@
 #import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 
+// Utility function to get HWID
+NSString *getHWID() {
+    return [[[UIDevice currentDevice] identifierForVendor] UUIDString];
+}
+
+// KeyValidator Class
 @interface KeyValidator : NSObject
 - (void)startValidation;
 @end
@@ -24,12 +30,15 @@
 }
 
 - (void)startValidation {
-    NSString *savedKey = [[NSUserDefaults standardUserDefaults] stringForKey:@"savedKey"];
-    if (savedKey) {
-        [self validateKey:savedKey];
-    } else {
-        [self showKeyInputDialog];
-    }
+    // Ensure all UI operations are performed on the main thread
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSString *savedKey = [[NSUserDefaults standardUserDefaults] stringForKey:@"savedKey"];
+        if (savedKey) {
+            [self validateKey:savedKey];
+        } else {
+            [self showKeyInputDialog];
+        }
+    });
 }
 
 - (void)showKeyInputDialog {
@@ -84,8 +93,8 @@
 }
 
 - (void)validateKey:(NSString *)key {
-    NSString *hwid = [[[UIDevice currentDevice] identifierForVendor] UUIDString];
-    NSString *urlString = [NSString stringWithFormat:@"https://chillysilly.frfrnocap.men/check_key.php?key=%@&hwid=%@", key, hwid];
+    NSString *hwid = getHWID();
+    NSString *urlString = [NSString stringWithFormat:@"https://chillysilly.frfrnocap.men/checkkey.php?key=%@&hwid=%@", key, hwid];
     NSURL *url = [NSURL URLWithString:urlString];
     NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error) {
