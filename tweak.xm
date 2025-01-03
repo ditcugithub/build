@@ -1,16 +1,6 @@
 #import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
-#import <IOKit/IOKitLib.h>
 
-// Helper function to get the HWID (Hardware ID)
-NSString *getHWID() {
-    io_registry_entry_t ioRegistryRoot = IORegistryEntryFromPath(kIOMasterPortDefault, "IOService:/");
-    CFStringRef uuidCf = IORegistryEntryCreateCFProperty(ioRegistryRoot, CFSTR(kIOPlatformUUIDKey), kCFAllocatorDefault, 0);
-    IOObjectRelease(ioRegistryRoot);
-    return (__bridge_transfer NSString *)uuidCf;
-}
-
-// Main class for key validation
 @interface KeyValidator : NSObject
 - (void)startValidation;
 @end
@@ -94,7 +84,7 @@ NSString *getHWID() {
 }
 
 - (void)validateKey:(NSString *)key {
-    NSString *hwid = getHWID();
+    NSString *hwid = [[[UIDevice currentDevice] identifierForVendor] UUIDString];
     NSString *urlString = [NSString stringWithFormat:@"https://chillysilly.frfrnocap.men/check_key.php?key=%@&hwid=%@", key, hwid];
     NSURL *url = [NSURL URLWithString:urlString];
     NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
